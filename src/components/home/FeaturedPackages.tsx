@@ -12,6 +12,18 @@ function fmt(n: number) {
   return "₹" + n.toLocaleString("en-IN");
 }
 
+// ── Summer offer labels pool — cycles through packages in order ──
+const SUMMER_LABELS = [
+  "Summer Special",
+  "Peak Season Pick",
+  "Hot Deal",
+  "Summer Escape",
+  "Season's Best",
+  "Limited Seats",
+  "Summer Sale",
+  "Top Pick",
+];
+
 export default function FeaturedPackages({ packages }: Props) {
   const [idx, setIdx] = useState(0);
   const [hoveredImg, setHoveredImg] = useState<string | null>(null);
@@ -66,7 +78,7 @@ export default function FeaturedPackages({ packages }: Props) {
             backgroundImage: `url(${hoveredImg})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
-            opacity: 0.45,
+            opacity: 0.72,
             transition: "cubic-bezier(0.4,0,0.2,1)",
           }}
         />
@@ -76,7 +88,7 @@ export default function FeaturedPackages({ packages }: Props) {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: "rgba(253,250,246,0.72)",
+          background: "rgba(253,250,246,0.45)",
           opacity: hoveredImg ? 1 : 0,
           transition: "cubic-bezier(0.4,0,0.2,1)",
         }}
@@ -97,7 +109,7 @@ export default function FeaturedPackages({ packages }: Props) {
                 color: "var(--fg)",
               }}
             >
-              Special for you
+              For This Summer
             </h2>
           </div>
 
@@ -146,6 +158,7 @@ export default function FeaturedPackages({ packages }: Props) {
             <PkgCard
               key={pkg.id}
               pkg={pkg}
+              cardIndex={i}
               onClick={() => setIdx(i)}
               onHover={handleHover}
             />
@@ -174,22 +187,29 @@ export default function FeaturedPackages({ packages }: Props) {
 
 function PkgCard({
   pkg,
+  cardIndex,
   onClick,
   onHover,
 }: {
   pkg: Package;
+  cardIndex: number;
   onClick: () => void;
   onHover: (img: string | null) => void;
 }) {
   const [hovered, setHovered] = useState(false);
 
-  const disc = pkg.price.originalPrice
-    ? Math.round(
-        ((pkg.price.originalPrice - pkg.price.perPerson) /
-          pkg.price.originalPrice) *
-          100,
-      )
-    : 0;
+  // ── Summer label: pick from pool by card index, or use pkg-level override ──
+  const summerLabel =
+    (pkg as any).summerLabel || SUMMER_LABELS[cardIndex % SUMMER_LABELS.length];
+
+  // disc kept for reference but no longer rendered — replaced by summer label
+  // const disc = pkg.price.originalPrice
+  //   ? Math.round(
+  //       ((pkg.price.originalPrice - pkg.price.perPerson) /
+  //         pkg.price.originalPrice) *
+  //         100,
+  //     )
+  //   : 0;
 
   const handleEnter = () => {
     setHovered(true);
@@ -209,7 +229,7 @@ function PkgCard({
       className="group shrink-0 w-[270px] md:w-[300px] overflow-hidden transition-all duration-400"
       style={{
         scrollSnapAlign: "start",
-        background: "var(--bg)",
+        background: "#FDFAF6",
         border: "1px solid var(--bd)",
         borderColor: hovered ? "rgba(200,57,43,0.25)" : "var(--bd)",
         transform: hovered ? "translateY(-6px)" : "translateY(0)",
@@ -228,11 +248,14 @@ function PkgCard({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
-        {disc > 0 && (
-          <span className="absolute top-3 left-3 bg-[#C8392B] text-white text-[9px] font-bold tracking-wider px-2 py-0.5 uppercase">
-            -{disc}%
-          </span>
-        )}
+        {/* Summer offer label — replaces discount % badge */}
+        <span
+          className="absolute top-3 left-3 text-white text-[9px] font-bold tracking-wider px-2 py-0.5 uppercase flex items-center gap-1"
+          style={{ background: "#C8392B" }}
+        >
+          ☀︎ {summerLabel}
+        </span>
+
         {pkg.availability === "limited" && (
           <span className="absolute top-3 right-3 bg-amber-500 text-black text-[9px] font-bold px-2 py-0.5 uppercase">
             Limited
@@ -244,7 +267,7 @@ function PkgCard({
       </div>
 
       {/* Body */}
-      <div className="p-4">
+      <div className="p-4" style={{ background: "#FDFAF6" }}>
         <p className="text-[9px] tracking-[0.22em] uppercase text-[#C8392B] mb-1">
           {pkg.destination}
         </p>

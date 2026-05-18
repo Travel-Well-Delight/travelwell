@@ -80,7 +80,7 @@ export const packages: Package[] = [
     availability: "available",
     rating: 4.9,
     reviewCount: 48,
-    featured: true,
+    featured: false,
     createdAt: "2024-01-01T00:00:00Z",
   },
   {
@@ -177,7 +177,7 @@ export const packages: Package[] = [
     availability: "limited",
     rating: 4.8,
     reviewCount: 34,
-    featured: true,
+    featured: false,
     createdAt: "2024-01-05T00:00:00Z",
   },
   {
@@ -345,7 +345,7 @@ export const packages: Package[] = [
     availability: "available",
     rating: 4.7,
     reviewCount: 62,
-    featured: false,
+    featured: true,
     createdAt: "2024-02-01T00:00:00Z",
   },
   {
@@ -581,7 +581,7 @@ export const packages: Package[] = [
     availability: "limited",
     rating: 4.9,
     reviewCount: 33,
-    featured: false,
+    featured: true,
     createdAt: "2024-02-15T00:00:00Z",
   },
   {
@@ -1547,7 +1547,7 @@ export const packages: Package[] = [
     availability: "limited",
     rating: 5.0,
     reviewCount: 21,
-    featured: false,
+    featured: true,
     createdAt: "2024-04-20T00:00:00Z",
   },
   {
@@ -1998,7 +1998,7 @@ export const packages: Package[] = [
     availability: "available",
     rating: 4.8,
     reviewCount: 59,
-    featured: true,
+    featured: false,
     createdAt: "2024-05-15T00:00:00Z",
   },
   {
