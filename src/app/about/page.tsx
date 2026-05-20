@@ -451,7 +451,7 @@ export default function AboutPage() {
               alignItems: "center",
               gap: "14px",
               marginBottom: "28px",
-              marginTop: "20px",
+              marginTop: "50px",
             }}
           >
             <div
