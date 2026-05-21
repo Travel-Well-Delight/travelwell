@@ -14,6 +14,9 @@ import {
   Plane,
   Map,
   Sunset,
+  Search,
+  MessageSquare,
+  ArrowRight,
 } from "lucide-react";
 
 // ── Rotating welcome prompts ──────────────────────────────────────────────────
@@ -41,6 +44,8 @@ const WELCOME_PROMPTS: { icon: React.ReactNode; text: string }[] = [
   },
 ];
 
+// ── Suggestion chips ──────────────────────────────────────────────────────────
+
 const CHIPS: { icon: React.ReactNode; label: string; value: string }[] = [
   { icon: <Waves size={12} />, label: "Beach holiday", value: "Beach holiday" },
   {
@@ -56,7 +61,7 @@ const CHIPS: { icon: React.ReactNode; label: string; value: string }[] = [
   { icon: <Users size={12} />, label: "Family tour", value: "Family tour" },
 ];
 
-// ── Rotating speech-bubble teaser lines ──────────────────────────────────────
+// ── Cycling teaser lines for speech bubble ────────────────────────────────────
 
 interface TeaserLine {
   icon: React.ReactNode;
@@ -107,11 +112,170 @@ const TEASER_LINES: TeaserLine[] = [
   },
 ];
 
+// ── Nav button definitions shown in placeholder response ─────────────────────
+
+interface NavBtn {
+  icon: React.ReactNode;
+  label: string;
+  sub: string;
+  href: string;
+  primary?: boolean;
+}
+
+const ALL_NAV_BTNS: NavBtn[] = [
+  {
+    icon: <Map size={14} />,
+    label: "Browse Packages",
+    sub: "23 curated trips",
+    href: "/packages",
+    primary: true,
+  },
+  {
+    icon: <Search size={14} />,
+    label: "Search & Filter",
+    sub: "By dates, budget & type",
+    href: "/?search=1",
+  },
+  {
+    icon: <Compass size={14} />,
+    label: "AI Trip Planner",
+    sub: "Coming soon",
+    href: "/planner",
+  },
+  {
+    icon: <MessageSquare size={14} />,
+    label: "Make an Enquiry",
+    sub: "Reply within 24 hrs",
+    href: "/enquiry",
+    primary: false,
+  },
+  {
+    icon: <Globe size={14} />,
+    label: "Our Story",
+    sub: "About TravelWell",
+    href: "/about",
+  },
+];
+
+// ── Keyword → relevant nav buttons ───────────────────────────────────────────
+
+function getNavButtons(text: string): NavBtn[] {
+  const t = text.toLowerCase();
+  if (/beach|goa|bali|maldiv|sea|coastal|ocean|island/i.test(t))
+    return [ALL_NAV_BTNS[0], ALL_NAV_BTNS[1], ALL_NAV_BTNS[3]];
+  if (/hill|mountain|manali|kashmir|shimla|mussoorie|ooty|munnar|trek/i.test(t))
+    return [ALL_NAV_BTNS[0], ALL_NAV_BTNS[1], ALL_NAV_BTNS[3]];
+  if (
+    /international|abroad|europe|dubai|thailand|bali|singapore|maldiv/i.test(t)
+  )
+    return [ALL_NAV_BTNS[0], ALL_NAV_BTNS[2], ALL_NAV_BTNS[3]];
+  if (/family|kids|child|parents|couple|honeymoon/i.test(t))
+    return [ALL_NAV_BTNS[0], ALL_NAV_BTNS[1], ALL_NAV_BTNS[3]];
+  if (/budget|cheap|afford|price|cost|₹|rupee/i.test(t))
+    return [ALL_NAV_BTNS[1], ALL_NAV_BTNS[0], ALL_NAV_BTNS[3]];
+  if (/plan|planner|ai|custom|itinerary/i.test(t))
+    return [ALL_NAV_BTNS[2], ALL_NAV_BTNS[0], ALL_NAV_BTNS[3]];
+  if (/enquir|contact|call|whatsapp|talk|speak/i.test(t))
+    return [ALL_NAV_BTNS[3], ALL_NAV_BTNS[0]];
+  // default — show top 3
+  return [ALL_NAV_BTNS[0], ALL_NAV_BTNS[3], ALL_NAV_BTNS[2]];
+}
+
+function getReplyText(text: string): string {
+  const t = text.toLowerCase();
+  if (/beach|goa|bali|sea|island/i.test(t))
+    return "Great choice! We have some beautiful beach escapes lined up. Here's where to explore:";
+  if (/hill|mountain|trek|kashmir|manali/i.test(t))
+    return "Absolutely! Our hill station packages are some of our most popular. Take a look:";
+  if (/international|abroad|europe|dubai/i.test(t))
+    return "We curate some stunning international trips! Here's how to find your perfect one:";
+  if (/family|kids|couple|honeymoon/i.test(t))
+    return "We have handcrafted packages tailored exactly for that. Here's where to start:";
+  if (/budget|cheap|price|cost/i.test(t))
+    return "We believe great trips don't have to break the bank. Explore by budget here:";
+  if (/plan|planner|ai|custom/i.test(t))
+    return "Our AI Trip Planner is on its way! Until then, here's the best way to plan:";
+  return "Thanks for reaching out! Our full AI guide is coming soon. Until then, here's where to go:";
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  navButtons?: NavBtn[];
 }
+
+// ── Nav button component ──────────────────────────────────────────────────────
+
+function NavButton({ btn }: { btn: NavBtn }) {
+  return (
+    <a
+      href={btn.href}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        padding: "9px 12px",
+        background: btn.primary ? "#C8392B" : "#FDF6ED",
+        border: `1px solid ${btn.primary ? "#C8392B" : "rgba(200,57,43,0.2)"}`,
+        borderRadius: "8px",
+        textDecoration: "none",
+        transition: "all 0.15s ease",
+      }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget as HTMLAnchorElement;
+        el.style.background = btn.primary ? "#b03224" : "rgba(200,57,43,0.07)";
+        el.style.borderColor = "#C8392B";
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLAnchorElement;
+        el.style.background = btn.primary ? "#C8392B" : "#FDF6ED";
+        el.style.borderColor = btn.primary ? "#C8392B" : "rgba(200,57,43,0.2)";
+      }}
+    >
+      <span
+        style={{
+          color: btn.primary ? "#fff" : "#C8392B",
+          display: "flex",
+          alignItems: "center",
+          flexShrink: 0,
+        }}
+      >
+        {btn.icon}
+      </span>
+      <div style={{ flex: 1 }}>
+        <div
+          style={{
+            fontSize: "12px",
+            fontWeight: 600,
+            color: btn.primary ? "#fff" : "#1C0A00",
+            fontFamily: "DM Sans, sans-serif",
+            lineHeight: 1.2,
+          }}
+        >
+          {btn.label}
+        </div>
+        <div
+          style={{
+            fontSize: "10px",
+            color: btn.primary ? "rgba(255,255,255,0.75)" : "#7A4A2A",
+            marginTop: "1px",
+          }}
+        >
+          {btn.sub}
+        </div>
+      </div>
+      <ArrowRight
+        size={12}
+        color={btn.primary ? "rgba(255,255,255,0.7)" : "#C8392B"}
+      />
+    </a>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function TravelGuideButton() {
   const pathname = usePathname();
@@ -143,7 +307,7 @@ export default function TravelGuideButton() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Cycle teaser text every 3s with fade
+  // Cycle teaser every 3s
   useEffect(() => {
     if (open) return;
     const interval = setInterval(() => {
@@ -196,14 +360,16 @@ export default function TravelGuideButton() {
   function handleSend() {
     const trimmed = input.trim();
     if (!trimmed) return;
+    const replyText = getReplyText(trimmed);
+    const navButtons = getNavButtons(trimmed);
     setMessages((prev) => [
       ...prev,
       { id: crypto.randomUUID(), role: "user", content: trimmed },
       {
         id: crypto.randomUUID(),
         role: "assistant",
-        content:
-          "Thanks for sharing! Our AI planner is coming soon and will help you find the perfect trip. Until then, feel free to browse our packages or reach out via the enquiry page.",
+        content: replyText,
+        navButtons,
       },
     ]);
     setInput("");
@@ -380,7 +546,7 @@ export default function TravelGuideButton() {
             right: "24px",
             zIndex: 9998,
             width: "340px",
-            height: "480px",
+            height: "500px",
             display: "flex",
             flexDirection: "column",
             background: "#FDF6ED",
@@ -510,7 +676,8 @@ export default function TravelGuideButton() {
                       justifyContent: "center",
                       flexShrink: 0,
                       marginRight: "7px",
-                      alignSelf: "flex-end",
+                      alignSelf: "flex-start",
+                      marginTop: "2px",
                     }}
                   >
                     <Compass size={12} color="#fff" />
@@ -518,39 +685,62 @@ export default function TravelGuideButton() {
                 )}
                 <div
                   style={{
-                    maxWidth: "78%",
-                    padding: "10px 13px",
-                    borderRadius:
-                      msg.role === "user"
-                        ? "14px 14px 4px 14px"
-                        : "14px 14px 14px 4px",
-                    background: msg.role === "user" ? "#C8392B" : "#fff",
-                    border:
-                      msg.role === "user"
-                        ? "none"
-                        : "1px solid rgba(200,57,43,0.14)",
-                    boxShadow: "0 2px 8px rgba(28,10,0,0.06)",
+                    maxWidth: "82%",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "6px",
                   }}
                 >
-                  <p
+                  {/* Text bubble */}
+                  <div
                     style={{
-                      margin: 0,
-                      fontSize: "13px",
-                      lineHeight: 1.6,
-                      color: msg.role === "user" ? "#fff" : "#1C0A00",
-                      fontFamily: "Georgia, serif",
-                      whiteSpace: "pre-line",
+                      padding: "10px 13px",
+                      borderRadius:
+                        msg.role === "user"
+                          ? "14px 14px 4px 14px"
+                          : "14px 14px 14px 4px",
+                      background: msg.role === "user" ? "#C8392B" : "#fff",
+                      border:
+                        msg.role === "user"
+                          ? "none"
+                          : "1px solid rgba(200,57,43,0.14)",
+                      boxShadow: "0 2px 8px rgba(28,10,0,0.06)",
                     }}
                   >
-                    {msg.content}
-                  </p>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: "13px",
+                        lineHeight: 1.6,
+                        color: msg.role === "user" ? "#fff" : "#1C0A00",
+                        fontFamily: "Georgia, serif",
+                        whiteSpace: "pre-line",
+                      }}
+                    >
+                      {msg.content}
+                    </p>
+                  </div>
+                  {/* Nav buttons below assistant message */}
+                  {msg.navButtons && msg.navButtons.length > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px",
+                      }}
+                    >
+                      {msg.navButtons.map((btn) => (
+                        <NavButton key={btn.href + btn.label} btn={btn} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Suggestion chips */}
+          {/* Suggestion chips — before user types */}
           {messages.filter((m) => m.role === "user").length === 0 && (
             <div
               style={{
@@ -718,7 +908,6 @@ export default function TravelGuideButton() {
             {TEASER_LINES[teaserIndex].icon}
           </span>
           {TEASER_LINES[teaserIndex].text}
-          {/* Tail pointing down-right toward FAB */}
           <div
             aria-hidden="true"
             style={{
@@ -735,7 +924,7 @@ export default function TravelGuideButton() {
         </a>
       )}
 
-      {/* ── FAB button ────────────────────────────────────────────────────── */}
+      {/* ── FAB ───────────────────────────────────────────────────────────── */}
       <div
         style={{
           position: "fixed",
@@ -746,7 +935,6 @@ export default function TravelGuideButton() {
           height: "56px",
         }}
       >
-        {/* "Chat with us" badge — pinned to top-left corner of FAB */}
         {!open && (
           <div
             style={{
@@ -771,7 +959,6 @@ export default function TravelGuideButton() {
             Chat with us
           </div>
         )}
-
         <button
           onClick={open ? handleClose : handleOpen}
           aria-label="Open Travel Guide"
