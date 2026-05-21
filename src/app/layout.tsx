@@ -5,6 +5,7 @@ import Footer from "@/components/layout/Footer";
 import PageTransition from "@/components/ui/PageTransition";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthProvider } from "@/context/AuthContext";
+import TravelGuideButton from "@/components/ui/TravelGuideButton";
 
 export const metadata: Metadata = {
   title: {
@@ -48,6 +49,7 @@ export default function RootLayout({
             <PageTransition>{children}</PageTransition>
           </main>
           <Footer />
+          <TravelGuideButton />
         </AuthProvider>
         <Analytics />
       </body>
