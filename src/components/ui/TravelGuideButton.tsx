@@ -280,8 +280,6 @@ function NavButton({ btn }: { btn: NavBtn }) {
 export default function TravelGuideButton() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [nudgeVisible, setNudgeVisible] = useState(false);
-  const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [teaserIndex, setTeaserIndex] = useState(0);
   const [teaserVisible, setTeaserVisible] = useState(true);
   const [promptIndex] = useState(() =>
@@ -294,16 +292,28 @@ export default function TravelGuideButton() {
 
   const hidden = pathname?.startsWith("/packages/") && pathname !== "/packages";
 
-  // 30-second nudge timer
+  // Auto-open chat once per session on page load
   useEffect(() => {
-    const dismissed = sessionStorage.getItem("tg_nudge_dismissed") === "true";
-    if (dismissed) {
-      setNudgeDismissed(true);
-      return;
-    }
+    const alreadyOpened = sessionStorage.getItem("tg_auto_opened") === "true";
+    if (alreadyOpened) return;
     const timer = setTimeout(() => {
-      if (!open) setNudgeVisible(true);
-    }, 30000);
+      sessionStorage.setItem("tg_auto_opened", "true");
+      setMessages([
+        {
+          id: "greet-1",
+          role: "assistant",
+          content: "Hi there! I'm your TravelWell Guide.",
+        },
+        {
+          id: "greet-2",
+          role: "assistant",
+          content:
+            WELCOME_PROMPTS[Math.floor(Math.random() * WELCOME_PROMPTS.length)]
+              .text,
+        },
+      ]);
+      setOpen(true);
+    }, 1200);
     return () => clearTimeout(timer);
   }, []);
 
@@ -343,18 +353,11 @@ export default function TravelGuideButton() {
         },
       ]);
     }
-    setNudgeVisible(false);
     setOpen(true);
   }
 
   function handleClose() {
     setOpen(false);
-  }
-
-  function dismissNudge() {
-    setNudgeVisible(false);
-    setNudgeDismissed(true);
-    sessionStorage.setItem("tg_nudge_dismissed", "true");
   }
 
   function handleSend() {
@@ -385,158 +388,6 @@ export default function TravelGuideButton() {
 
   return (
     <>
-      {/* ── Nudge popup ───────────────────────────────────────────────────── */}
-      {nudgeVisible && !nudgeDismissed && !open && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "90px",
-            right: "24px",
-            zIndex: 9997,
-            width: "248px",
-            background: "#fff",
-            border: "1px solid rgba(200,57,43,0.18)",
-            borderRadius: "14px",
-            padding: "16px 16px 14px",
-            boxShadow: "0 10px 36px rgba(28,10,0,0.13)",
-            animation: "tg-rise 0.4s cubic-bezier(.22,.68,0,1.2) both",
-          }}
-        >
-          <button
-            onClick={dismissNudge}
-            aria-label="Dismiss"
-            style={{
-              position: "absolute",
-              top: "8px",
-              right: "10px",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "#A8967E",
-              padding: "2px",
-              lineHeight: 1,
-            }}
-          >
-            <X size={13} />
-          </button>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "9px",
-              marginBottom: "10px",
-            }}
-          >
-            <div
-              style={{
-                width: "34px",
-                height: "34px",
-                borderRadius: "50%",
-                background: "#C8392B",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <Compass size={16} color="#fff" />
-            </div>
-            <div>
-              <div
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  color: "#1C0A00",
-                  fontFamily: "Georgia, serif",
-                }}
-              >
-                Travel Guide
-              </div>
-              <div
-                style={{
-                  fontSize: "10px",
-                  color: "#7A4A2A",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                TravelWell Delight
-              </div>
-            </div>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "8px",
-              marginBottom: "12px",
-              paddingRight: "10px",
-            }}
-          >
-            <span style={{ color: "#C8392B", flexShrink: 0, marginTop: "2px" }}>
-              {prompt.icon}
-            </span>
-            <p
-              style={{
-                margin: 0,
-                fontSize: "13px",
-                color: "#1C0A00",
-                fontFamily: "Georgia, serif",
-                lineHeight: 1.5,
-              }}
-            >
-              {prompt.text}
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              dismissNudge();
-              handleOpen();
-            }}
-            style={{
-              width: "100%",
-              background: "#C8392B",
-              color: "#fff",
-              border: "none",
-              borderRadius: "8px",
-              padding: "9px 0",
-              fontSize: "11px",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              fontFamily: "DM Sans, sans-serif",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Let's Plan
-          </button>
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              bottom: "-8px",
-              right: "26px",
-              width: "16px",
-              height: "8px",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                width: "12px",
-                height: "12px",
-                background: "#fff",
-                border: "1px solid rgba(200,57,43,0.18)",
-                transform: "rotate(45deg)",
-                position: "absolute",
-                top: "-7px",
-                left: "2px",
-                boxShadow: "2px 2px 4px rgba(28,10,0,0.06)",
-              }}
-            />
-          </div>
-        </div>
-      )}
-
       {/* ── Chat panel ────────────────────────────────────────────────────── */}
       {open && (
         <div
