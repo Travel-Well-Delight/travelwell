@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { useGuestId } from "@/hooks/useGuestId";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 interface NavBtn {
   icon: React.ReactNode;
   label: string;
@@ -26,6 +28,8 @@ interface Message {
   content: string;
   navButtons?: NavBtn[];
 }
+
+// ── Nav button ────────────────────────────────────────────────────────────────
 
 function NavButton({ btn }: { btn: NavBtn }) {
   return (
@@ -93,6 +97,8 @@ function NavButton({ btn }: { btn: NavBtn }) {
   );
 }
 
+// ── Inner planner ─────────────────────────────────────────────────────────────
+
 function PlannerInner() {
   const searchParams = useSearchParams();
   const guestId = useGuestId();
@@ -102,83 +108,51 @@ function PlannerInner() {
   const [loading, setLoading] = useState(false);
   const [welcomed, setWelcomed] = useState(false);
   const [chatStarted, setChatStarted] = useState(false);
-  const [navbarHeight, setNavbarHeight] = useState(0);
+  const [navbarHeight, setNavbarHeight] = useState(80);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  // ── Measure navbar on mount ───────────────────────────────────────────────
+  // ── Measure real navbar height ────────────────────────────────────────────
   useEffect(() => {
     const nav = document.querySelector("header") as HTMLElement;
     if (nav) setNavbarHeight(nav.offsetHeight);
   }, []);
 
-  // ── Hide / restore global navbar + footer when chat starts ─────────────────
+  // ── Hide/show global navbar based on chat state ───────────────────────────
   useEffect(() => {
     const nav = document.querySelector("header") as HTMLElement;
-    const footer = document.querySelector("footer") as HTMLElement;
+    if (!nav) return;
 
     if (chatStarted) {
-      if (nav) {
-        nav.style.transition = "transform 0.4s ease, opacity 0.4s ease";
-        nav.style.transform = "translateY(-100%)";
-        nav.style.opacity = "0";
-        nav.style.pointerEvents = "none";
-      }
-      if (footer) {
-        footer.style.transition = "transform 0.4s ease, opacity 0.4s ease";
-        footer.style.transform = "translateY(100%)";
-        footer.style.opacity = "0";
-        footer.style.pointerEvents = "none";
-        footer.style.position = "fixed";
-        footer.style.bottom = "0";
-        footer.style.left = "0";
-        footer.style.right = "0";
-      }
+      // Slide navbar up out of view
+      nav.style.transition = "transform 0.35s ease, opacity 0.35s ease";
+      nav.style.transform = "translateY(-100%)";
+      nav.style.opacity = "0";
+      nav.style.pointerEvents = "none";
     } else {
-      if (nav) {
-        nav.style.transition = "transform 0.4s ease, opacity 0.4s ease";
-        nav.style.transform = "translateY(0)";
-        nav.style.opacity = "1";
-        nav.style.pointerEvents = "auto";
-      }
-      if (footer) {
-        footer.style.transition = "transform 0.4s ease, opacity 0.4s ease";
-        footer.style.transform = "translateY(0)";
-        footer.style.opacity = "1";
-        footer.style.pointerEvents = "auto";
-        footer.style.position = "";
-        footer.style.bottom = "";
-        footer.style.left = "";
-        footer.style.right = "";
-      }
+      // Restore navbar
+      nav.style.transition = "transform 0.35s ease, opacity 0.35s ease";
+      nav.style.transform = "translateY(0)";
+      nav.style.opacity = "1";
+      nav.style.pointerEvents = "auto";
     }
+
     return () => {
-      if (nav) {
-        nav.style.transform = "translateY(0)";
-        nav.style.opacity = "1";
-        nav.style.pointerEvents = "auto";
-        nav.style.transition = "";
-      }
-      if (footer) {
-        footer.style.transform = "translateY(0)";
-        footer.style.opacity = "1";
-        footer.style.pointerEvents = "auto";
-        footer.style.transition = "";
-        footer.style.position = "";
-        footer.style.bottom = "";
-        footer.style.left = "";
-        footer.style.right = "";
-      }
+      // Always restore on unmount
+      nav.style.transform = "translateY(0)";
+      nav.style.opacity = "1";
+      nav.style.pointerEvents = "auto";
     };
   }, [chatStarted]);
 
-  // ── Greet on mount ────────────────────────────────────────────────────────
+  // ── On mount: greet + handle ?q= ─────────────────────────────────────────
   useEffect(() => {
     if (welcomed) return;
     setWelcomed(true);
+
     const incoming = searchParams.get("q");
+
     const greetings: Message[] = [
       {
         id: "planner-greet-1",
@@ -187,6 +161,7 @@ function PlannerInner() {
           "Welcome to your AI Trip Planner!\nI'm Travel Guide — tell me where you'd like to go, your budget, travel dates, and who's travelling. I'll build a complete itinerary just for you.",
       },
     ];
+
     if (incoming) {
       greetings.push({
         id: "planner-greet-2",
@@ -202,63 +177,76 @@ function PlannerInner() {
     }
   }, []);
 
-  // ── Scroll to bottom ─────────────────────────────────────────────────────
+  // ── Scroll to bottom ──────────────────────────────────────────────────────
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  // ── Auto-send for ?q= ────────────────────────────────────────────────────
   async function autoSend(text: string, priorMessages: Message[]) {
-    const withUser = [
+    const withUser: Message[] = [
       ...priorMessages,
-      { id: crypto.randomUUID(), role: "user" as const, content: text },
+      { id: crypto.randomUUID(), role: "user", content: text },
     ];
     setMessages(withUser);
     setLoading(true);
     await streamReply(text, withUser);
   }
 
+  // ── Manual send ──────────────────────────────────────────────────────────
   async function handleSend() {
     const trimmed = input.trim();
     if (!trimmed || loading) return;
+
+    // Hide navbar on first user message
     if (!chatStarted) setChatStarted(true);
-    const withUser = [
+
+    const withUser: Message[] = [
       ...messages,
-      { id: crypto.randomUUID(), role: "user" as const, content: trimmed },
+      { id: crypto.randomUUID(), role: "user", content: trimmed },
     ];
     setMessages(withUser);
     setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
     setLoading(true);
     await streamReply(trimmed, withUser);
   }
 
+  // ── Core streaming ────────────────────────────────────────────────────────
   async function streamReply(userText: string, currentMessages: Message[]) {
     const history = currentMessages
       .filter((m) => !m.id.startsWith("planner-greet-"))
       .slice(-12)
       .map((m) => ({ role: m.role, content: m.content }));
+
     try {
       const res = await fetch("/api/planner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history, source: "planner", guestId }),
       });
-      if (!res.ok) throw new Error();
+
+      if (!res.ok) throw new Error("API error");
+
       const assistantId = crypto.randomUUID();
       setMessages((prev) => [
         ...prev,
         { id: assistantId, role: "assistant", content: "" },
       ]);
+
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let fullText = "";
+
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          for (const line of decoder
-            .decode(value, { stream: true })
-            .split("\n")) {
+          const chunk = decoder.decode(value, { stream: true });
+          for (const line of chunk.split("\n")) {
             if (!line.startsWith("data: ")) continue;
             try {
               const { text } = JSON.parse(line.slice(6));
@@ -271,28 +259,30 @@ function PlannerInner() {
                 );
               }
             } catch {
-              /* skip */
+              /* skip malformed */
             }
           }
         }
       }
-      const pkgMatches = [...fullText.matchAll(/\[PACKAGE:([^\]]+)\]/g)];
+
+      const packageMatches = [...fullText.matchAll(/\[PACKAGE:([^\]]+)\]/g)];
       const clean = fullText.replace(/\[PACKAGE:[^\]]+\]/g, "").trim();
-      const navButtons: NavBtn[] = [
-        ...pkgMatches.map((m, idx) => ({
-          icon: <Map size={14} />,
-          label: "View package",
-          sub: m[1],
-          href: `/packages/${m[1]}`,
-          primary: idx === 0,
-        })),
-        {
-          icon: <MessageSquare size={14} />,
-          label: "Enquire about this trip",
-          sub: "Our team replies within 24 hrs",
-          href: `/enquiry?trip=${encodeURIComponent(userText.slice(0, 80))}`,
-        },
-      ];
+
+      const navButtons: NavBtn[] = packageMatches.map((m, idx) => ({
+        icon: <Map size={14} />,
+        label: "View package",
+        sub: m[1],
+        href: `/packages/${m[1]}`,
+        primary: idx === 0,
+      }));
+
+      navButtons.push({
+        icon: <MessageSquare size={14} />,
+        label: "Enquire about this trip",
+        sub: "Our team replies within 24 hrs",
+        href: `/enquiry?trip=${encodeURIComponent(userText.slice(0, 80))}`,
+      });
+
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
@@ -337,30 +327,126 @@ function PlannerInner() {
   }
 
   return (
+    // Outer: full viewport height, offset by navbar when visible
     <div
-      ref={containerRef}
       style={{
-        // When chat hasn't started: sit below global navbar naturally
-        // When chat starts: expand to full viewport via position fixed
-        ...(chatStarted
-          ? {
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 40,
-            }
-          : {
-              height: `calc(100vh - ${navbarHeight}px)`,
-            }),
         display: "flex",
         flexDirection: "column",
+        height: chatStarted ? "100vh" : `calc(100vh - ${navbarHeight}px)`,
+        transition: "height 0.35s ease",
         background: "#FDF6ED",
         fontFamily: "Georgia, serif",
-        transition: "all 0.4s ease",
+        position: "fixed",
+        top: chatStarted ? 0 : `${navbarHeight}px`,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        transitionBehavior: "smooth",
+        zIndex: 50,
       }}
     >
+      {/* ── Planner header ── */}
+      <div
+        style={{
+          background: "#C8392B",
+          padding: "16px 24px",
+          display: "flex",
+          alignItems: "center",
+          gap: "14px",
+          flexShrink: 0,
+          boxShadow: "0 2px 12px rgba(28,10,0,0.15)",
+        }}
+      >
+        <div
+          style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.18)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Compass size={20} color="#fff" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontSize: "17px",
+              fontWeight: 700,
+              color: "#fff",
+              letterSpacing: "0.02em",
+            }}
+          >
+            AI Trip Planner
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              marginTop: "2px",
+            }}
+          >
+            <span
+              style={{
+                width: "7px",
+                height: "7px",
+                borderRadius: "50%",
+                background: loading ? "#FBBF24" : "#4ADE80",
+                display: "inline-block",
+                transition: "background 0.3s",
+              }}
+            />
+            <span
+              style={{
+                fontSize: "11px",
+                color: "rgba(255,255,255,0.8)",
+                letterSpacing: "0.05em",
+                fontFamily: "DM Sans, sans-serif",
+              }}
+            >
+              {loading
+                ? "Travel Guide is thinking…"
+                : "Travel Guide · Always available"}
+            </span>
+          </div>
+        </div>
+        {/* Back to site — only when chat started and navbar is hidden */}
+        {chatStarted && (
+          <a
+            href="/"
+            onClick={() => setChatStarted(false)}
+            style={{
+              fontSize: "11px",
+              color: "rgba(255,255,255,0.7)",
+              textDecoration: "none",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              padding: "6px 14px",
+              border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: "4px",
+              fontFamily: "DM Sans, sans-serif",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.background =
+                "rgba(255,255,255,0.12)";
+              (e.currentTarget as HTMLAnchorElement).style.color = "#fff";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.background =
+                "transparent";
+              (e.currentTarget as HTMLAnchorElement).style.color =
+                "rgba(255,255,255,0.7)";
+            }}
+          >
+            ← Back
+          </a>
+        )}
+      </div>
+
       {/* ── Messages ── */}
       <div
         style={{
@@ -369,14 +455,14 @@ function PlannerInner() {
           padding: "24px 20px 16px",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "flex-end",
+          gap: "16px",
           scrollbarWidth: "thin",
           scrollbarColor: "rgba(200,57,43,0.2) transparent",
         }}
       >
         <div
           style={{
-            maxWidth: "720px",
+            maxWidth: "760px",
             width: "100%",
             margin: "0 auto",
             display: "flex",
@@ -483,7 +569,7 @@ function PlannerInner() {
 
           {/* Typing indicator */}
           {loading && messages[messages.length - 1]?.role === "user" && (
-            <div style={{ display: "flex" }}>
+            <div style={{ display: "flex", justifyContent: "flex-start" }}>
               <div
                 style={{
                   width: "32px",
@@ -530,7 +616,7 @@ function PlannerInner() {
         </div>
       </div>
 
-      {/* ── Input bar ── */}
+      {/* ── Input ── */}
       <div
         style={{
           padding: "14px 20px 20px",
@@ -539,48 +625,12 @@ function PlannerInner() {
           flexShrink: 0,
         }}
       >
-        {/* Status — shown only when chat active */}
-        {chatStarted && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              justifyContent: "center",
-              marginBottom: "10px",
-            }}
-          >
-            <span
-              style={{
-                width: "6px",
-                height: "6px",
-                borderRadius: "50%",
-                background: loading ? "#FBBF24" : "#4ADE80",
-                display: "inline-block",
-                transition: "background 0.3s",
-              }}
-            />
-            <span
-              style={{
-                fontSize: "10px",
-                color: "#A8967E",
-                letterSpacing: "0.06em",
-                fontFamily: "DM Sans, sans-serif",
-              }}
-            >
-              {loading
-                ? "Travel Guide is thinking…"
-                : "Travel Guide · Always available"}
-            </span>
-          </div>
-        )}
-
         <div
           style={{
             display: "flex",
             gap: "10px",
             alignItems: "flex-end",
-            maxWidth: "720px",
+            maxWidth: "760px",
             margin: "0 auto",
           }}
         >
@@ -667,6 +717,8 @@ function PlannerInner() {
     </div>
   );
 }
+
+// ── Page export ───────────────────────────────────────────────────────────────
 
 export default function PlannerPage() {
   return (
