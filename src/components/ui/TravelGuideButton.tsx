@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   X,
   Compass,
@@ -17,7 +17,9 @@ import {
   Search,
   MessageSquare,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
+import { useGuestId } from "@/hooks/useGuestId";
 
 // ── Rotating welcome prompts ──────────────────────────────────────────────────
 
@@ -61,7 +63,7 @@ const CHIPS: { icon: React.ReactNode; label: string; value: string }[] = [
   { icon: <Users size={12} />, label: "Family tour", value: "Family tour" },
 ];
 
-// ── Cycling teaser lines for speech bubble ────────────────────────────────────
+// ── Teaser lines ──────────────────────────────────────────────────────────────
 
 interface TeaserLine {
   icon: React.ReactNode;
@@ -112,7 +114,7 @@ const TEASER_LINES: TeaserLine[] = [
   },
 ];
 
-// ── Nav button definitions shown in placeholder response ─────────────────────
+// ── Nav buttons ───────────────────────────────────────────────────────────────
 
 interface NavBtn {
   icon: React.ReactNode;
@@ -139,7 +141,7 @@ const ALL_NAV_BTNS: NavBtn[] = [
   {
     icon: <Compass size={14} />,
     label: "AI Trip Planner",
-    sub: "Coming soon",
+    sub: "Full itinerary builder",
     href: "/planner",
   },
   {
@@ -147,7 +149,6 @@ const ALL_NAV_BTNS: NavBtn[] = [
     label: "Make an Enquiry",
     sub: "Reply within 24 hrs",
     href: "/enquiry",
-    primary: false,
   },
   {
     icon: <Globe size={14} />,
@@ -157,45 +158,33 @@ const ALL_NAV_BTNS: NavBtn[] = [
   },
 ];
 
-// ── Keyword → relevant nav buttons ───────────────────────────────────────────
-
 function getNavButtons(text: string): NavBtn[] {
-  const t = text.toLowerCase();
-  if (/beach|goa|bali|maldiv|sea|coastal|ocean|island/i.test(t))
-    return [ALL_NAV_BTNS[0], ALL_NAV_BTNS[1], ALL_NAV_BTNS[3]];
-  if (/hill|mountain|manali|kashmir|shimla|mussoorie|ooty|munnar|trek/i.test(t))
+  if (/beach|goa|bali|maldiv|sea|coastal|ocean|island/i.test(text))
     return [ALL_NAV_BTNS[0], ALL_NAV_BTNS[1], ALL_NAV_BTNS[3]];
   if (
-    /international|abroad|europe|dubai|thailand|bali|singapore|maldiv/i.test(t)
+    /hill|mountain|manali|kashmir|shimla|mussoorie|ooty|munnar|trek/i.test(text)
   )
-    return [ALL_NAV_BTNS[0], ALL_NAV_BTNS[2], ALL_NAV_BTNS[3]];
-  if (/family|kids|child|parents|couple|honeymoon/i.test(t))
     return [ALL_NAV_BTNS[0], ALL_NAV_BTNS[1], ALL_NAV_BTNS[3]];
-  if (/budget|cheap|afford|price|cost|₹|rupee/i.test(t))
+  if (/international|abroad|europe|dubai|thailand|singapore|maldiv/i.test(text))
+    return [ALL_NAV_BTNS[0], ALL_NAV_BTNS[2], ALL_NAV_BTNS[3]];
+  if (/family|kids|child|parents|couple|honeymoon/i.test(text))
+    return [ALL_NAV_BTNS[0], ALL_NAV_BTNS[1], ALL_NAV_BTNS[3]];
+  if (/budget|cheap|afford|price|cost|₹|rupee/i.test(text))
     return [ALL_NAV_BTNS[1], ALL_NAV_BTNS[0], ALL_NAV_BTNS[3]];
-  if (/plan|planner|ai|custom|itinerary/i.test(t))
+  if (/plan|planner|ai|custom|itinerary/i.test(text))
     return [ALL_NAV_BTNS[2], ALL_NAV_BTNS[0], ALL_NAV_BTNS[3]];
-  if (/enquir|contact|call|whatsapp|talk|speak/i.test(t))
+  if (/enquir|contact|call|talk|speak/i.test(text))
     return [ALL_NAV_BTNS[3], ALL_NAV_BTNS[0]];
-  // default — show top 3
   return [ALL_NAV_BTNS[0], ALL_NAV_BTNS[3], ALL_NAV_BTNS[2]];
 }
 
-function getReplyText(text: string): string {
-  const t = text.toLowerCase();
-  if (/beach|goa|bali|sea|island/i.test(t))
-    return "Great choice! We have some beautiful beach escapes lined up. Here's where to explore:";
-  if (/hill|mountain|trek|kashmir|manali/i.test(t))
-    return "Absolutely! Our hill station packages are some of our most popular. Take a look:";
-  if (/international|abroad|europe|dubai/i.test(t))
-    return "We curate some stunning international trips! Here's how to find your perfect one:";
-  if (/family|kids|couple|honeymoon/i.test(t))
-    return "We have handcrafted packages tailored exactly for that. Here's where to start:";
-  if (/budget|cheap|price|cost/i.test(t))
-    return "We believe great trips don't have to break the bank. Explore by budget here:";
-  if (/plan|planner|ai|custom/i.test(t))
-    return "Our AI Trip Planner is on its way! Until then, here's the best way to plan:";
-  return "Thanks for reaching out! Our full AI guide is coming soon. Until then, here's where to go:";
+// ── Detect prompts too complex for the bubble ─────────────────────────────────
+
+function isComplexPrompt(text: string): boolean {
+  const wordCount = text.trim().split(/\s+/).length;
+  const complexKeywords =
+    /itinerary|day.by.day|full.plan|plan.my.trip|build.a.trip|detailed|schedule|day \d|night|nights|budget.for|how.many.days|what.should.i|suggest.a.complete|plan.a.complete|entire.trip|whole.trip|week.in|days.in/i;
+  return wordCount >= 15 || complexKeywords.test(text);
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -207,7 +196,7 @@ interface Message {
   navButtons?: NavBtn[];
 }
 
-// ── Nav button component ──────────────────────────────────────────────────────
+// ── NavButton component ───────────────────────────────────────────────────────
 
 function NavButton({ btn }: { btn: NavBtn }) {
   return (
@@ -279,6 +268,9 @@ function NavButton({ btn }: { btn: NavBtn }) {
 
 export default function TravelGuideButton() {
   const pathname = usePathname();
+  const router = useRouter();
+  const guestId = useGuestId();
+
   const [open, setOpen] = useState(false);
   const [teaserIndex, setTeaserIndex] = useState(0);
   const [teaserVisible, setTeaserVisible] = useState(true);
@@ -287,12 +279,14 @@ export default function TravelGuideButton() {
   );
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const hidden = pathname?.startsWith("/packages/") && pathname !== "/packages";
 
-  // Auto-open chat once per session on page load
+  // Auto-open once per session
   useEffect(() => {
     const alreadyOpened = sessionStorage.getItem("tg_auto_opened") === "true";
     if (alreadyOpened) return;
@@ -330,10 +324,12 @@ export default function TravelGuideButton() {
     return () => clearInterval(interval);
   }, [open]);
 
+  // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Focus input when opened
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 150);
   }, [open]);
@@ -360,22 +356,121 @@ export default function TravelGuideButton() {
     setOpen(false);
   }
 
-  function handleSend() {
+  async function handleSend() {
     const trimmed = input.trim();
-    if (!trimmed) return;
-    const replyText = getReplyText(trimmed);
-    const navButtons = getNavButtons(trimmed);
+    if (!trimmed || loading) return;
+
+    // ── Redirect complex prompts to the planner page ──────────────────────────
+    if (isComplexPrompt(trimmed)) {
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: "user", content: trimmed },
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content:
+            "That sounds like a full trip plan! I'm just a quick guide — our AI Trip Planner is built exactly for this. Let me take you there with your request ready to go.",
+          navButtons: [
+            {
+              icon: <Compass size={14} />,
+              label: "Open AI Trip Planner",
+              sub: "Your message will be waiting",
+              href: `/planner?q=${encodeURIComponent(trimmed)}`,
+              primary: true,
+            },
+          ],
+        },
+      ]);
+      setInput("");
+      return;
+    }
+
+    // Add user message immediately
     setMessages((prev) => [
       ...prev,
       { id: crypto.randomUUID(), role: "user", content: trimmed },
-      {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: replyText,
-        navButtons,
-      },
     ]);
     setInput("");
+    setLoading(true);
+
+    // Build history — exclude greeting messages, keep last 6 turns
+    const history = messages
+      .filter((m) => !m.id.startsWith("greet-"))
+      .slice(-6)
+      .map((m) => ({ role: m.role, content: m.content }));
+
+    try {
+      const res = await fetch("/api/planner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [...history, { role: "user", content: trimmed }],
+          source: "bubble",
+          guestId,
+        }),
+      });
+
+      if (!res.ok) throw new Error("API error");
+
+      // Add empty assistant message to stream into
+      const assistantId = crypto.randomUUID();
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantId, role: "assistant", content: "" },
+      ]);
+
+      // Stream response
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          for (const line of chunk.split("\n")) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const { text } = JSON.parse(line.slice(6));
+              if (text) {
+                fullText += text;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId ? { ...m, content: fullText } : m,
+                  ),
+                );
+              }
+            } catch {
+              /* skip malformed chunks */
+            }
+          }
+        }
+      }
+
+      // Strip [PACKAGE:id] tag + append nav buttons
+      const clean = fullText.replace(/\[PACKAGE:[^\]]+\]/g, "").trim();
+      const navButtons = getNavButtons(trimmed);
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId ? { ...m, content: clean, navButtons } : m,
+        ),
+      );
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content:
+            "Sorry, something went wrong. Please try again or visit our enquiry page.",
+          navButtons: [ALL_NAV_BTNS[3]],
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -383,8 +478,6 @@ export default function TravelGuideButton() {
   }
 
   if (hidden) return null;
-
-  const prompt = WELCOME_PROMPTS[promptIndex];
 
   return (
     <>
@@ -458,8 +551,9 @@ export default function TravelGuideButton() {
                     width: "6px",
                     height: "6px",
                     borderRadius: "50%",
-                    background: "#4ADE80",
+                    background: loading ? "#FBBF24" : "#4ADE80",
                     display: "inline-block",
+                    transition: "background 0.3s",
                   }}
                 />
                 <span
@@ -469,7 +563,7 @@ export default function TravelGuideButton() {
                     letterSpacing: "0.05em",
                   }}
                 >
-                  AI · Always available
+                  {loading ? "Thinking…" : "AI · Always available"}
                 </span>
               </div>
             </div>
@@ -542,7 +636,6 @@ export default function TravelGuideButton() {
                     gap: "6px",
                   }}
                 >
-                  {/* Text bubble */}
                   <div
                     style={{
                       padding: "10px 13px",
@@ -569,9 +662,25 @@ export default function TravelGuideButton() {
                       }}
                     >
                       {msg.content}
+                      {/* Blinking cursor while streaming */}
+                      {loading &&
+                        msg.role === "assistant" &&
+                        msg === messages[messages.length - 1] &&
+                        msg.content && (
+                          <span
+                            style={{
+                              display: "inline-block",
+                              width: "2px",
+                              height: "13px",
+                              background: "#C8392B",
+                              marginLeft: "2px",
+                              verticalAlign: "text-bottom",
+                              animation: "tg-blink 0.8s step-end infinite",
+                            }}
+                          />
+                        )}
                     </p>
                   </div>
-                  {/* Nav buttons below assistant message */}
                   {msg.navButtons && msg.navButtons.length > 0 && (
                     <div
                       style={{
@@ -588,6 +697,52 @@ export default function TravelGuideButton() {
                 </div>
               </div>
             ))}
+
+            {/* Typing indicator — shown before first streaming chunk arrives */}
+            {loading && messages[messages.length - 1]?.role === "user" && (
+              <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                <div
+                  style={{
+                    width: "26px",
+                    height: "26px",
+                    borderRadius: "50%",
+                    background: "#C8392B",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    marginRight: "7px",
+                  }}
+                >
+                  <Compass size={12} color="#fff" />
+                </div>
+                <div
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: "14px 14px 14px 4px",
+                    background: "#fff",
+                    border: "1px solid rgba(200,57,43,0.14)",
+                    display: "flex",
+                    gap: "4px",
+                    alignItems: "center",
+                  }}
+                >
+                  {[0, 0.2, 0.4].map((delay, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        width: "6px",
+                        height: "6px",
+                        borderRadius: "50%",
+                        background: "#C8392B",
+                        opacity: 0.5,
+                        animation: `tg-dot 1.2s ${delay}s ease-in-out infinite`,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -663,6 +818,7 @@ export default function TravelGuideButton() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKey}
               placeholder="Type a destination or ask anything…"
+              disabled={loading}
               style={{
                 flex: 1,
                 border: "1px solid rgba(200,57,43,0.18)",
@@ -674,6 +830,7 @@ export default function TravelGuideButton() {
                 background: "#FDF6ED",
                 outline: "none",
                 transition: "border-color 0.2s",
+                opacity: loading ? 0.6 : 1,
               }}
               onFocus={(e) =>
                 (e.target.style.borderColor = "rgba(200,57,43,0.5)")
@@ -684,15 +841,16 @@ export default function TravelGuideButton() {
             />
             <button
               onClick={handleSend}
-              disabled={!input.trim()}
+              disabled={!input.trim() || loading}
               aria-label="Send"
               style={{
                 width: "36px",
                 height: "36px",
                 borderRadius: "8px",
-                background: input.trim() ? "#C8392B" : "rgba(200,57,43,0.2)",
+                background:
+                  input.trim() && !loading ? "#C8392B" : "rgba(200,57,43,0.2)",
                 border: "none",
-                cursor: input.trim() ? "pointer" : "not-allowed",
+                cursor: input.trim() && !loading ? "pointer" : "not-allowed",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -700,7 +858,15 @@ export default function TravelGuideButton() {
                 transition: "background 0.2s",
               }}
             >
-              <Send size={14} color="#fff" />
+              {loading ? (
+                <Loader2
+                  size={14}
+                  color="#fff"
+                  style={{ animation: "tg-spin 1s linear infinite" }}
+                />
+              ) : (
+                <Send size={14} color="#fff" />
+              )}
             </button>
           </div>
 
@@ -718,7 +884,7 @@ export default function TravelGuideButton() {
               borderTop: "1px solid rgba(200,57,43,0.07)",
             }}
           >
-            TravelWell Delight · AI coming soon
+            TravelWell Delight · Powered by Travel Guide AI
           </div>
         </div>
       )}

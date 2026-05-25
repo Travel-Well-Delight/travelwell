@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
 
     // Set session cookie
     await setSessionCookie({
+      _id: user._id,
       id: user._id.toString(),
       firstName: user.firstName,
       lastName: user.lastName,

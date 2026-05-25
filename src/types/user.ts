@@ -1,4 +1,5 @@
 export interface IUserSession {
+  _id: unknown;
   id: string;
   firstName: string;
   lastName: string;
