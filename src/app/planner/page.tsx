@@ -9,6 +9,10 @@ import {
   Map,
   MessageSquare,
   ArrowRight,
+  Waves,
+  Mountain,
+  Globe,
+  Users,
 } from "lucide-react";
 import { useGuestId } from "@/hooks/useGuestId";
 
@@ -29,6 +33,15 @@ interface Message {
   navButtons?: NavBtn[];
 }
 
+// ── Starter chips ─────────────────────────────────────────────────────────────
+
+const STARTERS = [
+  { icon: <Waves size={13} />, text: "Beach holiday in Goa for 5 nights" },
+  { icon: <Mountain size={13} />, text: "Hill stations under ₹25,000 for 2" },
+  { icon: <Globe size={13} />, text: "Honeymoon in Kerala or Maldives" },
+  { icon: <Users size={13} />, text: "Family trip to Rajasthan in December" },
+];
+
 // ── Nav button ────────────────────────────────────────────────────────────────
 
 function NavButton({ btn }: { btn: NavBtn }) {
@@ -40,21 +53,21 @@ function NavButton({ btn }: { btn: NavBtn }) {
         alignItems: "center",
         gap: "10px",
         padding: "10px 14px",
-        background: btn.primary ? "#C8392B" : "#FDF6ED",
+        background: btn.primary ? "#C8392B" : "#fff",
         border: `1px solid ${btn.primary ? "#C8392B" : "rgba(200,57,43,0.2)"}`,
-        borderRadius: "8px",
+        borderRadius: "10px",
         textDecoration: "none",
         transition: "all 0.15s ease",
-        marginTop: "6px",
+        marginTop: "4px",
       }}
       onMouseEnter={(e) => {
         const el = e.currentTarget as HTMLAnchorElement;
-        el.style.background = btn.primary ? "#b03224" : "rgba(200,57,43,0.07)";
+        el.style.background = btn.primary ? "#b03224" : "rgba(200,57,43,0.06)";
         el.style.borderColor = "#C8392B";
       }}
       onMouseLeave={(e) => {
         const el = e.currentTarget as HTMLAnchorElement;
-        el.style.background = btn.primary ? "#C8392B" : "#FDF6ED";
+        el.style.background = btn.primary ? "#C8392B" : "#fff";
         el.style.borderColor = btn.primary ? "#C8392B" : "rgba(200,57,43,0.2)";
       }}
     >
@@ -90,7 +103,7 @@ function NavButton({ btn }: { btn: NavBtn }) {
         </div>
       </div>
       <ArrowRight
-        size={13}
+        size={12}
         color={btn.primary ? "rgba(255,255,255,0.7)" : "#C8392B"}
       />
     </a>
@@ -108,181 +121,169 @@ function PlannerInner() {
   const [loading, setLoading] = useState(false);
   const [welcomed, setWelcomed] = useState(false);
   const [chatStarted, setChatStarted] = useState(false);
-  const [navbarHeight, setNavbarHeight] = useState(80);
+  const [navH, setNavH] = useState(80);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // ── Measure real navbar height ────────────────────────────────────────────
+  // ── Measure navbar ────────────────────────────────────────────────────────
   useEffect(() => {
     const nav = document.querySelector("header") as HTMLElement;
-    if (nav) setNavbarHeight(nav.offsetHeight);
+    if (nav) setNavH(nav.offsetHeight);
   }, []);
 
-  // ── Hide/show global navbar based on chat state ───────────────────────────
+  // ── Hide navbar + footer when chat starts ─────────────────────────────────
   useEffect(() => {
     const nav = document.querySelector("header") as HTMLElement;
-    if (!nav) return;
-
+    const footer = document.querySelector("footer") as HTMLElement;
     if (chatStarted) {
-      // Slide navbar up out of view
-      nav.style.transition = "transform 0.35s ease, opacity 0.35s ease";
-      nav.style.transform = "translateY(-100%)";
-      nav.style.opacity = "0";
-      nav.style.pointerEvents = "none";
+      [nav, footer].forEach((el) => {
+        if (!el) return;
+        el.style.transition = "opacity 0.3s ease";
+        el.style.opacity = "0";
+        el.style.pointerEvents = "none";
+        el.style.visibility = "hidden";
+      });
     } else {
-      // Restore navbar
-      nav.style.transition = "transform 0.35s ease, opacity 0.35s ease";
-      nav.style.transform = "translateY(0)";
-      nav.style.opacity = "1";
-      nav.style.pointerEvents = "auto";
+      [nav, footer].forEach((el) => {
+        if (!el) return;
+        el.style.transition = "opacity 0.3s ease";
+        el.style.opacity = "1";
+        el.style.pointerEvents = "auto";
+        el.style.visibility = "visible";
+      });
     }
-
     return () => {
-      // Always restore on unmount
-      nav.style.transform = "translateY(0)";
-      nav.style.opacity = "1";
-      nav.style.pointerEvents = "auto";
+      [nav, footer].forEach((el) => {
+        if (!el) return;
+        el.style.opacity = "1";
+        el.style.pointerEvents = "auto";
+        el.style.visibility = "visible";
+        el.style.transition = "";
+      });
     };
   }, [chatStarted]);
 
-  // ── On mount: greet + handle ?q= ─────────────────────────────────────────
+  // ── Scroll to bottom ──────────────────────────────────────────────────────
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  // ── Greet on mount ────────────────────────────────────────────────────────
   useEffect(() => {
     if (welcomed) return;
     setWelcomed(true);
-
     const incoming = searchParams.get("q");
-
-    const greetings: Message[] = [
-      {
-        id: "planner-greet-1",
-        role: "assistant",
-        content:
-          "Welcome to your AI Trip Planner!\nI'm Travel Guide — tell me where you'd like to go, your budget, travel dates, and who's travelling. I'll build a complete itinerary just for you.",
-      },
-    ];
-
+    const greet: Message = {
+      id: "greet-1",
+      role: "assistant",
+      content:
+        "Hi! I'm Travel Guide — your personal trip planner.\n\nTell me where you'd like to go, your budget, who's travelling, and when. I'll find the perfect journey for you.",
+    };
     if (incoming) {
-      greetings.push({
-        id: "planner-greet-2",
-        role: "assistant",
-        content: `I can see you were planning: "${incoming}"\n\nLet me take care of that right away!`,
-      });
-      setMessages(greetings);
+      setMessages([
+        greet,
+        {
+          id: "greet-2",
+          role: "assistant",
+          content: `I can see you were planning: "${incoming}" — let me take care of that right away!`,
+        },
+      ]);
       setChatStarted(true);
-      setTimeout(() => autoSend(incoming, greetings), 800);
+      setTimeout(() => autoSend(incoming, [greet]), 800);
     } else {
-      setMessages(greetings);
+      setMessages([greet]);
       setTimeout(() => textareaRef.current?.focus(), 300);
     }
   }, []);
 
-  // ── Scroll to bottom ──────────────────────────────────────────────────────
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-
-  // ── Auto-send for ?q= ────────────────────────────────────────────────────
-  async function autoSend(text: string, priorMessages: Message[]) {
-    const withUser: Message[] = [
-      ...priorMessages,
-      { id: crypto.randomUUID(), role: "user", content: text },
+  async function autoSend(text: string, prior: Message[]) {
+    const withUser = [
+      ...prior,
+      { id: crypto.randomUUID(), role: "user" as const, content: text },
     ];
     setMessages(withUser);
     setLoading(true);
     await streamReply(text, withUser);
   }
 
-  // ── Manual send ──────────────────────────────────────────────────────────
   async function handleSend() {
     const trimmed = input.trim();
     if (!trimmed || loading) return;
-
-    // Hide navbar on first user message
     if (!chatStarted) setChatStarted(true);
-
-    const withUser: Message[] = [
+    const withUser = [
       ...messages,
-      { id: crypto.randomUUID(), role: "user", content: trimmed },
+      { id: crypto.randomUUID(), role: "user" as const, content: trimmed },
     ];
     setMessages(withUser);
     setInput("");
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
     setLoading(true);
     await streamReply(trimmed, withUser);
   }
 
-  // ── Core streaming ────────────────────────────────────────────────────────
-  async function streamReply(userText: string, currentMessages: Message[]) {
-    const history = currentMessages
-      .filter((m) => !m.id.startsWith("planner-greet-"))
+  async function streamReply(userText: string, current: Message[]) {
+    const history = current
+      .filter((m) => !m.id.startsWith("greet-"))
       .slice(-12)
       .map((m) => ({ role: m.role, content: m.content }));
-
     try {
       const res = await fetch("/api/planner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history, source: "planner", guestId }),
       });
-
-      if (!res.ok) throw new Error("API error");
-
+      if (!res.ok) throw new Error();
       const assistantId = crypto.randomUUID();
       setMessages((prev) => [
         ...prev,
         { id: assistantId, role: "assistant", content: "" },
       ]);
-
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
-      let fullText = "";
-
+      let full = "";
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          for (const line of chunk.split("\n")) {
+          for (const line of decoder
+            .decode(value, { stream: true })
+            .split("\n")) {
             if (!line.startsWith("data: ")) continue;
             try {
               const { text } = JSON.parse(line.slice(6));
               if (text) {
-                fullText += text;
+                full += text;
                 setMessages((prev) =>
                   prev.map((m) =>
-                    m.id === assistantId ? { ...m, content: fullText } : m,
+                    m.id === assistantId ? { ...m, content: full } : m,
                   ),
                 );
               }
             } catch {
-              /* skip malformed */
+              /* skip */
             }
           }
         }
       }
-
-      const packageMatches = [...fullText.matchAll(/\[PACKAGE:([^\]]+)\]/g)];
-      const clean = fullText.replace(/\[PACKAGE:[^\]]+\]/g, "").trim();
-
-      const navButtons: NavBtn[] = packageMatches.map((m, idx) => ({
-        icon: <Map size={14} />,
-        label: "View package",
-        sub: m[1],
-        href: `/packages/${m[1]}`,
-        primary: idx === 0,
-      }));
-
-      navButtons.push({
-        icon: <MessageSquare size={14} />,
-        label: "Enquire about this trip",
-        sub: "Our team replies within 24 hrs",
-        href: `/enquiry?trip=${encodeURIComponent(userText.slice(0, 80))}`,
-      });
-
+      const pkgs = [...full.matchAll(/\[PACKAGE:([^\]]+)\]/g)];
+      const clean = full.replace(/\[PACKAGE:[^\]]+\]/g, "").trim();
+      const navButtons: NavBtn[] = [
+        ...pkgs.map((m, i) => ({
+          icon: <Map size={13} />,
+          label: "View package",
+          sub: m[1],
+          href: `/packages/${m[1]}`,
+          primary: i === 0,
+        })),
+        {
+          icon: <MessageSquare size={13} />,
+          label: "Enquire about this trip",
+          sub: "Our team replies within 24 hrs",
+          href: `/enquiry?trip=${encodeURIComponent(userText.slice(0, 80))}`,
+        },
+      ];
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
@@ -301,10 +302,10 @@ function PlannerInner() {
           id: crypto.randomUUID(),
           role: "assistant",
           content:
-            "Sorry, something went wrong. Our team is happy to help plan your trip manually.",
+            "Sorry, something went wrong. Our team is happy to help plan your trip.",
           navButtons: [
             {
-              icon: <MessageSquare size={14} />,
+              icon: <MessageSquare size={13} />,
               label: "Contact our team",
               sub: "We'll plan it for you",
               href: "/enquiry",
@@ -326,109 +327,100 @@ function PlannerInner() {
     }
   }
 
+  function useStarter(text: string) {
+    setInput(text);
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  }
+
   return (
-    // Outer: full viewport height, offset by navbar when visible
     <div
       style={{
+        position: chatStarted ? "fixed" : "relative",
+        top: chatStarted ? 0 : "auto",
+        left: chatStarted ? 0 : "auto",
+        right: chatStarted ? 0 : "auto",
+        bottom: chatStarted ? 0 : "auto",
+        zIndex: chatStarted ? 50 : "auto",
+        marginTop: chatStarted ? 0 : navH,
+        height: chatStarted ? "100vh" : `calc(100vh - ${navH}px)`,
         display: "flex",
         flexDirection: "column",
-        height: chatStarted ? "100vh" : `calc(100vh - ${navbarHeight}px)`,
-        transition: "height 0.35s ease",
         background: "#FDF6ED",
         fontFamily: "Georgia, serif",
-        position: "fixed",
-        top: chatStarted ? 0 : `${navbarHeight}px`,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        transitionBehavior: "smooth",
-        zIndex: 50,
+        overflow: "hidden",
       }}
     >
-      {/* ── Planner header ── */}
-      <div
-        style={{
-          background: "#C8392B",
-          padding: "16px 24px",
-          display: "flex",
-          alignItems: "center",
-          gap: "14px",
-          flexShrink: 0,
-          boxShadow: "0 2px 12px rgba(28,10,0,0.15)",
-        }}
-      >
+      {/* ── Slim top bar — only when chat is fullscreen ── */}
+      {chatStarted && (
         <div
           style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.18)",
+            flexShrink: 0,
+            background: "#C8392B",
+            padding: "10px 20px",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
+            gap: "10px",
           }}
         >
-          <Compass size={20} color="#fff" />
-        </div>
-        <div style={{ flex: 1 }}>
           <div
             style={{
-              fontSize: "17px",
+              width: "26px",
+              height: "26px",
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.18)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Compass size={13} color="#fff" />
+          </div>
+          <span
+            style={{
+              flex: 1,
+              fontSize: "13px",
               fontWeight: 700,
               color: "#fff",
-              letterSpacing: "0.02em",
+              fontFamily: "Georgia, serif",
             }}
           >
             AI Trip Planner
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              marginTop: "2px",
-            }}
-          >
             <span
               style={{
-                width: "7px",
-                height: "7px",
+                fontWeight: 400,
+                fontSize: "11px",
+                color: "rgba(255,255,255,0.7)",
+                marginLeft: "10px",
+              }}
+            >
+              {loading ? "Thinking…" : "Travel Guide · Always available"}
+            </span>
+            <span
+              style={{
+                display: "inline-block",
+                width: "5px",
+                height: "5px",
                 borderRadius: "50%",
                 background: loading ? "#FBBF24" : "#4ADE80",
-                display: "inline-block",
+                marginLeft: "6px",
+                verticalAlign: "middle",
                 transition: "background 0.3s",
               }}
             />
-            <span
-              style={{
-                fontSize: "11px",
-                color: "rgba(255,255,255,0.8)",
-                letterSpacing: "0.05em",
-                fontFamily: "DM Sans, sans-serif",
-              }}
-            >
-              {loading
-                ? "Travel Guide is thinking…"
-                : "Travel Guide · Always available"}
-            </span>
-          </div>
-        </div>
-        {/* Back to site — only when chat started and navbar is hidden */}
-        {chatStarted && (
+          </span>
           <a
             href="/"
-            onClick={() => setChatStarted(false)}
             style={{
-              fontSize: "11px",
-              color: "rgba(255,255,255,0.7)",
+              fontSize: "10px",
+              color: "rgba(255,255,255,0.65)",
               textDecoration: "none",
               letterSpacing: "0.08em",
               textTransform: "uppercase",
-              padding: "6px 14px",
-              border: "1px solid rgba(255,255,255,0.25)",
-              borderRadius: "4px",
+              padding: "4px 12px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: "3px",
               fontFamily: "DM Sans, sans-serif",
-              transition: "all 0.2s",
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLAnchorElement).style.background =
@@ -439,52 +431,53 @@ function PlannerInner() {
               (e.currentTarget as HTMLAnchorElement).style.background =
                 "transparent";
               (e.currentTarget as HTMLAnchorElement).style.color =
-                "rgba(255,255,255,0.7)";
+                "rgba(255,255,255,0.65)";
             }}
           >
             ← Back
           </a>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* ── Messages ── */}
+      {/* ── Scroll area ── */}
       <div
+        ref={scrollRef}
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "24px 20px 16px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
           scrollbarWidth: "thin",
-          scrollbarColor: "rgba(200,57,43,0.2) transparent",
+          scrollbarColor: "rgba(200,57,43,0.15) transparent",
         }}
       >
+        {/* Inner wrapper — min-height forces content to bottom */}
         <div
           style={{
-            maxWidth: "760px",
-            width: "100%",
-            margin: "0 auto",
+            minHeight: "100%",
             display: "flex",
             flexDirection: "column",
+            justifyContent: "flex-end",
+            padding: "32px 20px 16px",
+            maxWidth: "720px",
+            margin: "0 auto",
             gap: "16px",
           }}
         >
+          {/* Messages */}
           {messages.map((msg, i) => (
             <div
               key={msg.id}
               style={{
                 display: "flex",
                 justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-                animation: "tg-msg 0.28s ease both",
-                animationDelay: `${Math.min(i, 3) * 0.08}s`,
+                animation: "tg-msg 0.25s ease both",
+                animationDelay: `${Math.min(i, 2) * 0.06}s`,
               }}
             >
               {msg.role === "assistant" && (
                 <div
                   style={{
-                    width: "32px",
-                    height: "32px",
+                    width: "30px",
+                    height: "30px",
                     borderRadius: "50%",
                     background: "#C8392B",
                     display: "flex",
@@ -492,34 +485,34 @@ function PlannerInner() {
                     justifyContent: "center",
                     flexShrink: 0,
                     marginRight: "10px",
-                    alignSelf: "flex-start",
-                    marginTop: "2px",
+                    alignSelf: "flex-end",
+                    marginBottom: "2px",
                   }}
                 >
-                  <Compass size={15} color="#fff" />
+                  <Compass size={14} color="#fff" />
                 </div>
               )}
               <div
                 style={{
-                  maxWidth: "72%",
+                  maxWidth: "74%",
                   display: "flex",
                   flexDirection: "column",
-                  gap: "8px",
+                  gap: "6px",
                 }}
               >
                 <div
                   style={{
-                    padding: "13px 16px",
+                    padding: "12px 16px",
                     borderRadius:
                       msg.role === "user"
-                        ? "16px 16px 4px 16px"
-                        : "16px 16px 16px 4px",
+                        ? "18px 18px 4px 18px"
+                        : "18px 18px 18px 4px",
                     background: msg.role === "user" ? "#C8392B" : "#fff",
                     border:
                       msg.role === "user"
                         ? "none"
-                        : "1px solid rgba(200,57,43,0.14)",
-                    boxShadow: "0 2px 12px rgba(28,10,0,0.07)",
+                        : "1px solid rgba(200,57,43,0.12)",
+                    boxShadow: "0 1px 8px rgba(28,10,0,0.06)",
                   }}
                 >
                   <p
@@ -529,18 +522,19 @@ function PlannerInner() {
                       lineHeight: 1.7,
                       color: msg.role === "user" ? "#fff" : "#1C0A00",
                       whiteSpace: "pre-line",
+                      fontFamily: "Georgia, serif",
                     }}
                   >
                     {msg.content}
                     {loading &&
                       msg.role === "assistant" &&
-                      msg === messages[messages.length - 1] &&
+                      i === messages.length - 1 &&
                       msg.content && (
                         <span
                           style={{
                             display: "inline-block",
                             width: "2px",
-                            height: "14px",
+                            height: "13px",
                             background: "#C8392B",
                             marginLeft: "2px",
                             verticalAlign: "text-bottom",
@@ -555,7 +549,7 @@ function PlannerInner() {
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: "6px",
+                      gap: "5px",
                     }}
                   >
                     {msg.navButtons.map((btn) => (
@@ -567,71 +561,128 @@ function PlannerInner() {
             </div>
           ))}
 
-          {/* Typing indicator */}
+          {/* Typing dots */}
           {loading && messages[messages.length - 1]?.role === "user" && (
-            <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <div
+              style={{ display: "flex", alignItems: "flex-end", gap: "10px" }}
+            >
               <div
                 style={{
-                  width: "32px",
-                  height: "32px",
+                  width: "30px",
+                  height: "30px",
                   borderRadius: "50%",
                   background: "#C8392B",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
-                  marginRight: "10px",
                 }}
               >
-                <Compass size={15} color="#fff" />
+                <Compass size={14} color="#fff" />
               </div>
               <div
                 style={{
-                  padding: "13px 16px",
-                  borderRadius: "16px 16px 16px 4px",
+                  padding: "12px 16px",
+                  borderRadius: "18px 18px 18px 4px",
                   background: "#fff",
-                  border: "1px solid rgba(200,57,43,0.14)",
+                  border: "1px solid rgba(200,57,43,0.12)",
                   display: "flex",
-                  gap: "5px",
+                  gap: "4px",
                   alignItems: "center",
                 }}
               >
-                {[0, 0.2, 0.4].map((delay, i) => (
+                {[0, 0.18, 0.36].map((d, i) => (
                   <span
                     key={i}
                     style={{
-                      width: "7px",
-                      height: "7px",
+                      width: "6px",
+                      height: "6px",
                       borderRadius: "50%",
                       background: "#C8392B",
                       opacity: 0.5,
-                      animation: `tg-dot 1.2s ${delay}s ease-in-out infinite`,
+                      animation: `tg-dot 1.2s ${d}s ease-in-out infinite`,
                     }}
                   />
                 ))}
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} />
+
+          <div ref={bottomRef} />
         </div>
       </div>
 
-      {/* ── Input ── */}
+      {/* ── Starter chips — shown before user types ── */}
+      {!chatStarted &&
+        messages.filter((m) => m.role === "user").length === 0 && (
+          <div
+            style={{
+              flexShrink: 0,
+              padding: "0 20px 16px",
+              maxWidth: "720px",
+              width: "100%",
+              margin: "0 auto",
+              display: "flex",
+              gap: "8px",
+              flexWrap: "wrap",
+            }}
+          >
+            {STARTERS.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => useStarter(s.text)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "7px 13px",
+                  background: "#fff",
+                  border: "1px solid rgba(200,57,43,0.2)",
+                  borderRadius: "20px",
+                  fontSize: "12px",
+                  color: "#C8392B",
+                  fontFamily: "DM Sans, sans-serif",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "rgba(200,57,43,0.07)";
+                  (e.currentTarget as HTMLButtonElement).style.borderColor =
+                    "rgba(200,57,43,0.5)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "#fff";
+                  (e.currentTarget as HTMLButtonElement).style.borderColor =
+                    "rgba(200,57,43,0.2)";
+                }}
+              >
+                <span style={{ display: "flex", alignItems: "center" }}>
+                  {s.icon}
+                </span>
+                {s.text}
+              </button>
+            ))}
+          </div>
+        )}
+
+      {/* ── Input bar ── */}
       <div
         style={{
-          padding: "14px 20px 20px",
-          borderTop: "1px solid rgba(200,57,43,0.12)",
-          background: "#fff",
           flexShrink: 0,
+          borderTop: "1px solid rgba(200,57,43,0.1)",
+          background: "#fff",
+          padding: "14px 20px 18px",
         }}
       >
         <div
           style={{
+            maxWidth: "720px",
+            margin: "0 auto",
             display: "flex",
             gap: "10px",
             alignItems: "flex-end",
-            maxWidth: "760px",
-            margin: "0 auto",
           }}
         >
           <textarea
@@ -650,7 +701,7 @@ function PlannerInner() {
             style={{
               flex: 1,
               border: "1px solid rgba(200,57,43,0.2)",
-              borderRadius: "10px",
+              borderRadius: "12px",
               padding: "12px 16px",
               fontSize: "14px",
               fontFamily: "Georgia, serif",
@@ -659,7 +710,7 @@ function PlannerInner() {
               outline: "none",
               resize: "none",
               lineHeight: 1.6,
-              minHeight: "46px",
+              minHeight: "48px",
               maxHeight: "140px",
               transition: "border-color 0.2s",
               opacity: loading ? 0.6 : 1,
@@ -675,17 +726,17 @@ function PlannerInner() {
             disabled={!input.trim() || loading}
             aria-label="Send"
             style={{
-              width: "46px",
-              height: "46px",
-              borderRadius: "10px",
+              width: "48px",
+              height: "48px",
+              borderRadius: "12px",
+              flexShrink: 0,
               background:
-                input.trim() && !loading ? "#C8392B" : "rgba(200,57,43,0.2)",
+                input.trim() && !loading ? "#C8392B" : "rgba(200,57,43,0.18)",
               border: "none",
               cursor: input.trim() && !loading ? "pointer" : "not-allowed",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              flexShrink: 0,
               transition: "background 0.2s",
             }}
           >
@@ -718,8 +769,6 @@ function PlannerInner() {
   );
 }
 
-// ── Page export ───────────────────────────────────────────────────────────────
-
 export default function PlannerPage() {
   return (
     <Suspense
@@ -735,11 +784,11 @@ export default function PlannerPage() {
         >
           <div style={{ textAlign: "center" }}>
             <Compass
-              size={36}
+              size={32}
               color="#C8392B"
               style={{
                 animation: "tg-spin 1.5s linear infinite",
-                marginBottom: "12px",
+                marginBottom: "10px",
               }}
             />
             <p
