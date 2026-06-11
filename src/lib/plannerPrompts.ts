@@ -1,9 +1,5 @@
 import { IContext } from "@/models/ChatSession";
 
-// ── Compact package index injected into both prompts ──────────────────────────
-// Keep this lean — only what the AI needs to match & recommend.
-// Full detail lives in src/data/packages.ts on the client.
-
 export const PACKAGE_INDEX = `
 AVAILABLE PACKAGES (id | name | destination | duration | land_from | tags):
 kerala-backwaters-7d    | Kerala Backwaters      | Kerala, India          | 7 nights  | ₹28,000  | beach,nature,honeymoon,couple
@@ -31,7 +27,7 @@ kerala-luxury-7d        | Kerala Luxury          | Kerala, India          | 7 ni
 char-dham-10d           | Char Dham Yatra        | Uttarakhand            | 10 nights | ₹25,000  | spiritual,pilgrimage,family
 `.trim();
 
-// ── BUBBLE system prompt — short, directive, navigational ─────────────────────
+// ── BUBBLE system prompt ──────────────────────────────────────────────────────
 
 export function buildBubblePrompt(
   context?: IContext,
@@ -69,7 +65,7 @@ ${PACKAGE_INDEX}
 TONE: Warm, concise, helpful. Think of yourself as a knowledgeable friend at the front desk, not a search engine.`;
 }
 
-// ── PLANNER system prompt — deep, conversational, full itinerary builder ───────
+// ── PLANNER system prompt ─────────────────────────────────────────────────────
 
 export function buildPlannerPrompt(
   context?: IContext,
@@ -92,7 +88,7 @@ YOUR ROLE:
 - Build complete day-by-day itineraries with morning/afternoon/evening breakdowns.
 - Be specific: name actual hotels, restaurants, activities, transport options.
 - Give honest price guidance: land costs from our packages + realistic flight estimates from major Indian cities.
-- When recommending a package, emit [PACKAGE:id] on its own line.
+- When recommending a package, always emit [PACKAGE:id] on its own line. The id must exactly match one from the PACKAGE_INDEX below.
 - If nothing in our packages fits perfectly, say so honestly and suggest a custom enquiry.
 
 PRICING TRANSPARENCY:
@@ -113,7 +109,7 @@ IMPORTANT:
 TONE: Knowledgeable, warm, honest — like a trusted travel agent who has personally visited these places.`;
 }
 
-// ── Context extraction prompt — run after each session to update stored context
+// ── Context extraction prompt ─────────────────────────────────────────────────
 
 export const CONTEXT_EXTRACTION_PROMPT = `
 From the conversation above, extract the following details the user mentioned.

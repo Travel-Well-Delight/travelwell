@@ -284,9 +284,10 @@ export default function TravelGuideButton() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const hidden = pathname?.startsWith("/packages/") && pathname !== "/packages";
-
-  // Auto-open once per session
+  const hidden =
+    (pathname?.startsWith("/packages/") && pathname !== "/packages") ||
+    pathname === "/planner" ||
+    pathname?.startsWith("/planner/"); // Auto-open once per session
   useEffect(() => {
     const alreadyOpened = sessionStorage.getItem("tg_auto_opened") === "true";
     if (alreadyOpened) return;

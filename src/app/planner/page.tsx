@@ -15,6 +15,9 @@ import {
   Users,
 } from "lucide-react";
 import { useGuestId } from "@/hooks/useGuestId";
+import PlannerPackageCard from "@/components/planner/PlannerPackageCard";
+import { packages as ALL_PACKAGES } from "@/data/packages";
+import type { Package } from "@/types/package";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,6 +34,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   navButtons?: NavBtn[];
+  packageCards?: Package[]; // resolved from [PACKAGE:id] tags
 }
 
 // ── Starter chips ─────────────────────────────────────────────────────────────
@@ -125,7 +129,6 @@ function PlannerInner() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   // ── Measure navbar ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -182,21 +185,26 @@ function PlannerInner() {
         "Hi! I'm Travel Guide — your personal trip planner.\n\nTell me where you'd like to go, your budget, who's travelling, and when. I'll find the perfect journey for you.",
     };
     if (incoming) {
-      setMessages([
-        greet,
-        {
-          id: "greet-2",
-          role: "assistant",
-          content: `I can see you were planning: "${incoming}" — let me take care of that right away!`,
-        },
-      ]);
+      const greet2: Message = {
+        id: "greet-2",
+        role: "assistant",
+        content: `I can see you were planning: "${incoming}" — let me take care of that right away!`,
+      };
+      setMessages([greet, greet2]);
       setChatStarted(true);
-      setTimeout(() => autoSend(incoming, [greet]), 800);
+      setTimeout(() => autoSend(incoming, [greet, greet2]), 800);
     } else {
       setMessages([greet]);
       setTimeout(() => textareaRef.current?.focus(), 300);
     }
   }, []);
+
+  // ── Resolve package IDs to Package objects ────────────────────────────────
+  function resolvePackages(ids: string[]): Package[] {
+    return ids
+      .map((id) => ALL_PACKAGES.find((p) => p.id === id || p.slug === id))
+      .filter(Boolean) as Package[];
+  }
 
   async function autoSend(text: string, prior: Message[]) {
     const withUser = [
@@ -235,14 +243,17 @@ function PlannerInner() {
         body: JSON.stringify({ messages: history, source: "planner", guestId }),
       });
       if (!res.ok) throw new Error();
+
       const assistantId = crypto.randomUUID();
       setMessages((prev) => [
         ...prev,
         { id: assistantId, role: "assistant", content: "" },
       ]);
+
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let full = "";
+
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
@@ -267,16 +278,15 @@ function PlannerInner() {
           }
         }
       }
-      const pkgs = [...full.matchAll(/\[PACKAGE:([^\]]+)\]/g)];
+
+      // ── Parse [PACKAGE:id] tags ───────────────────────────────────────────
+      const pkgMatches = [...full.matchAll(/\[PACKAGE:([^\]]+)\]/g)];
       const clean = full.replace(/\[PACKAGE:[^\]]+\]/g, "").trim();
+      const pkgIds = pkgMatches.map((m) => m[1]);
+      const packageCards = resolvePackages(pkgIds);
+
+      // ── Always add enquiry CTA ────────────────────────────────────────────
       const navButtons: NavBtn[] = [
-        ...pkgs.map((m, i) => ({
-          icon: <Map size={13} />,
-          label: "View package",
-          sub: m[1],
-          href: `/packages/${m[1]}`,
-          primary: i === 0,
-        })),
         {
           icon: <MessageSquare size={13} />,
           label: "Enquire about this trip",
@@ -284,13 +294,33 @@ function PlannerInner() {
           href: `/enquiry?trip=${encodeURIComponent(userText.slice(0, 80))}`,
         },
       ];
+
+      // ── If itinerary discussed OR package matched, offer itinerary page ──────
+      const hasItinerary =
+        /day \d|itinerary|morning|afternoon|evening|schedule/i.test(full);
+      const firstPkgId = pkgIds[0]; // use first matched package for the link
+
+      if (hasItinerary || firstPkgId) {
+        navButtons.unshift({
+          icon: <Map size={13} />,
+          label: "View full itinerary",
+          sub: "Day-by-day trip breakdown",
+          href: firstPkgId
+            ? `/planner/itinerary?pkg=${encodeURIComponent(firstPkgId)}`
+            : `/planner/itinerary?session=${encodeURIComponent(userText.slice(0, 60))}`,
+          primary: true,
+        });
+      }
+
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
             ? {
                 ...m,
                 content: clean,
-                navButtons: navButtons.length > 1 ? navButtons : undefined,
+                packageCards:
+                  packageCards.length > 0 ? packageCards : undefined,
+                navButtons,
               }
             : m,
         ),
@@ -350,7 +380,7 @@ function PlannerInner() {
         overflow: "hidden",
       }}
     >
-      {/* ── Slim top bar — only when chat is fullscreen ── */}
+      {/* Slim red bar — only when fullscreen */}
       {chatStarted && (
         <div
           style={{
@@ -439,9 +469,8 @@ function PlannerInner() {
         </div>
       )}
 
-      {/* ── Scroll area ── */}
+      {/* Scroll area */}
       <div
-        ref={scrollRef}
         style={{
           flex: 1,
           overflowY: "auto",
@@ -449,7 +478,6 @@ function PlannerInner() {
           scrollbarColor: "rgba(200,57,43,0.15) transparent",
         }}
       >
-        {/* Inner wrapper — min-height forces content to bottom */}
         <div
           style={{
             minHeight: "100%",
@@ -462,7 +490,6 @@ function PlannerInner() {
             gap: "16px",
           }}
         >
-          {/* Messages */}
           {messages.map((msg, i) => (
             <div
               key={msg.id}
@@ -494,12 +521,13 @@ function PlannerInner() {
               )}
               <div
                 style={{
-                  maxWidth: "74%",
+                  maxWidth: "76%",
                   display: "flex",
                   flexDirection: "column",
                   gap: "6px",
                 }}
               >
+                {/* Text bubble */}
                 <div
                   style={{
                     padding: "12px 16px",
@@ -544,12 +572,30 @@ function PlannerInner() {
                       )}
                   </p>
                 </div>
+
+                {/* Package cards — rendered after AI stream completes */}
+                {msg.packageCards && msg.packageCards.length > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0",
+                    }}
+                  >
+                    {msg.packageCards.map((pkg) => (
+                      <PlannerPackageCard key={pkg.id} pkg={pkg} compact />
+                    ))}
+                  </div>
+                )}
+
+                {/* Nav buttons */}
                 {msg.navButtons && msg.navButtons.length > 0 && (
                   <div
                     style={{
                       display: "flex",
                       flexDirection: "column",
                       gap: "5px",
+                      marginTop: msg.packageCards?.length ? "8px" : "0",
                     }}
                   >
                     {msg.navButtons.map((btn) => (
@@ -612,7 +658,7 @@ function PlannerInner() {
         </div>
       </div>
 
-      {/* ── Starter chips — shown before user types ── */}
+      {/* Starter chips */}
       {!chatStarted &&
         messages.filter((m) => m.role === "user").length === 0 && (
           <div
@@ -667,7 +713,7 @@ function PlannerInner() {
           </div>
         )}
 
-      {/* ── Input bar ── */}
+      {/* Input bar */}
       <div
         style={{
           flexShrink: 0,
