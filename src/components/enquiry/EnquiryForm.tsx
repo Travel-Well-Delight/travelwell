@@ -66,6 +66,66 @@ const FAQS = [
 
 type Status = "idle" | "sending" | "sent" | "error";
 
+/**
+ * Builds a friendly, human-sounding WhatsApp prefill message from
+ * whatever the user has filled in so far. Falls back to a generic
+ * greeting if the form is still empty.
+ */
+function buildWhatsAppMessage(form: {
+  firstName: string;
+  lastName: string;
+  destination: string;
+  tripType: string;
+  budget: string;
+  adults: string;
+  children: string;
+  travelDate: string;
+  duration: string;
+}) {
+  const parts: string[] = [];
+
+  const name = form.firstName ? form.firstName : "";
+  parts.push(name ? `Hi, I'm ${name}.` : "Hi!");
+
+  if (form.destination) {
+    parts.push(`I'm interested in planning a trip to ${form.destination}.`);
+  } else {
+    parts.push("I'd like help planning a trip.");
+  }
+
+  if (form.tripType) parts.push(`Trip type: ${form.tripType}.`);
+
+  if (form.travelDate) {
+    const [year, month] = form.travelDate.split("-");
+    if (year && month) {
+      const monthName = new Date(
+        Number(year),
+        Number(month) - 1,
+      ).toLocaleString("en-IN", { month: "long" });
+      parts.push(`Looking to travel around ${monthName} ${year}.`);
+    }
+  }
+
+  if (form.duration) parts.push(`Duration: ${form.duration}.`);
+
+  const adultsNum = Number(form.adults) || 0;
+  const childrenNum = Number(form.children) || 0;
+  if (adultsNum || childrenNum) {
+    const group: string[] = [];
+    if (adultsNum)
+      group.push(`${adultsNum} adult${adultsNum !== 1 ? "s" : ""}`);
+    if (childrenNum)
+      group.push(`${childrenNum} child${childrenNum !== 1 ? "ren" : ""}`);
+    parts.push(`Group: ${group.join(", ")}.`);
+  }
+
+  if (form.budget) parts.push(`Budget: ${form.budget}.`);
+
+  parts.push("Could you help me with a quote?");
+
+  return parts.join(" ");
+}
+
 export default function EnquiryFormFull() {
   const [status, setStatus] = useState<Status>("idle");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -185,8 +245,11 @@ export default function EnquiryFormFull() {
     if (service) set("serviceType", service);
   }, []);
   // runs once on mount
-  const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919999999999";
-  const waLink = `https://wa.me/${waNumber}?text=Hi%2C%20I%27d%20like%20help%20planning%20a%20trip%20with%20TravelWell%20Delight`;
+  const waNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "9881203607";
+
+  // Live WhatsApp message — rebuilds as the user fills in the form
+  const waMessage = buildWhatsAppMessage(form);
+  const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMessage)}`;
 
   /* ── Success screen ── */
   if (status === "sent") {
@@ -207,6 +270,15 @@ export default function EnquiryFormFull() {
             <span className="text-[#6B5B45] font-medium">{form.email}</span> and{" "}
             <span className="text-[#6B5B45] font-medium">{form.phone}</span>
           </p>
+          <a
+            href={waLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2.5 bg-[#25D366] hover:bg-[#1ebe5a] text-white text-[11px] font-bold tracking-[0.2em] uppercase px-8 py-4 rounded-sm transition-colors"
+          >
+            <WhatsAppIcon size={16} />
+            Chat With Us Instead
+          </a>
         </div>
       </div>
     );
@@ -530,24 +602,36 @@ export default function EnquiryFormFull() {
         )}
 
         {/* Submit row */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 pt-2">
-          <button
-            type="submit"
-            disabled={status === "sending"}
-            className="flex items-center justify-center gap-2.5 bg-[#C8392B] hover:bg-[#A52E22] text-white text-[11px] font-bold tracking-[0.2em] uppercase px-10 py-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[180px] rounded-sm"
-          >
-            {status === "sending" ? (
-              <>
-                <div className="w-3.5 h-3.5 border border-white/30 border-t-white rounded-full animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Send size={13} strokeWidth={2} />
-                Send Enquiry
-              </>
-            )}
-          </button>
+        <div className="flex flex-col gap-5 pt-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <button
+              type="submit"
+              disabled={status === "sending"}
+              className="flex items-center justify-center gap-2.5 bg-[#C8392B] hover:bg-[#A52E22] text-white text-[11px] font-bold tracking-[0.2em] uppercase px-10 py-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[180px] rounded-sm"
+            >
+              {status === "sending" ? (
+                <>
+                  <div className="w-3.5 h-3.5 border border-white/30 border-t-white rounded-full animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send size={13} strokeWidth={2} />
+                  Send Enquiry
+                </>
+              )}
+            </button>
+
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2.5 bg-[#25D366] hover:bg-[#1ebe5a] text-white text-[11px] font-bold tracking-[0.2em] uppercase px-10 py-4 transition-colors min-w-[180px] rounded-sm"
+            >
+              <WhatsAppIcon size={15} />
+              Chat on WhatsApp
+            </a>
+          </div>
           <p className="text-[#A8967E] text-[11px] leading-relaxed">
             Free consultation · No booking fees
             <br />
@@ -558,6 +642,32 @@ export default function EnquiryFormFull() {
 
       {/* ── RIGHT SIDEBAR ── */}
       <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
+        {/* WhatsApp quick-chat card */}
+        <a
+          href={waLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block border border-[#25D366]/30 bg-[#25D366]/5 rounded-sm p-5 hover:bg-[#25D366]/10 transition-colors group"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-full bg-[#25D366] flex items-center justify-center shrink-0">
+              <WhatsAppIcon size={18} className="text-white" />
+            </div>
+            <div>
+              <p className="text-[#1C0A00] text-sm font-medium">
+                Prefer to chat?
+              </p>
+              <p className="text-[#A8967E] text-[11px]">
+                Usually replies in minutes
+              </p>
+            </div>
+          </div>
+          <p className="text-[#6B5B45] text-xs leading-relaxed">
+            We'll open WhatsApp with your trip details already filled in — just
+            hit send.
+          </p>
+        </a>
+
         {/* Why TravelWell */}
         <div className="border border-[rgba(107,45,14,0.12)] bg-white rounded-sm p-5">
           <p className="text-[10px] tracking-[0.2em] uppercase text-[#A8967E] mb-5">
@@ -694,4 +804,26 @@ function Field({
 
 function Divider() {
   return <div className="h-px bg-[rgba(107,45,14,0.08)]" />;
+}
+
+function WhatsAppIcon({
+  size = 24,
+  className = "",
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.149-.149.297-.347.446-.521.149-.174.198-.298.298-.497.099-.198.05-.371-.05-.52-.099-.149-.668-1.612-.916-2.207-.242-.579-.487-.5-.668-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.05 3.133 4.97 4.27 2.92 1.137 2.92.758 3.445.71.524-.05 1.758-.718 2.006-1.413.247-.694.247-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+      <path d="M12.04 2c-5.523 0-10 4.477-10 10 0 1.83.495 3.55 1.36 5.03L2 22l5.13-1.36A9.96 9.96 0 0 0 12.04 22c5.523 0 10-4.477 10-10S17.563 2 12.04 2zm0 18.5c-1.62 0-3.13-.45-4.42-1.24l-.31-.19-3.04.8.81-2.96-.2-.31a8.47 8.47 0 0 1-1.31-4.6c0-4.69 3.81-8.5 8.49-8.5 4.69 0 8.5 3.81 8.5 8.5s-3.81 8.5-8.5 8.5z" />
+    </svg>
+  );
 }
