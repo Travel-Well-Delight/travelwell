@@ -11,7 +11,7 @@ import {
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile"; // swap to mixtral-8x7b if needed
+const GROQ_MODEL = "openai/gpt-oss-120b"; // migrated from llama-3.3-70b-versatile (decommissioned Aug 16 2026)
 
 // ── POST /api/planner ─────────────────────────────────────────────────────────
 
@@ -236,7 +236,7 @@ async function extractContext(
         Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant", // use faster/cheaper model for extraction
+        model: "openai/gpt-oss-20b", // migrated from llama-3.1-8b-instant (decommissioned Aug 16 2026)
         stream: false,
         max_tokens: 300,
         temperature: 0,

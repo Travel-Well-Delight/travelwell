@@ -18,8 +18,10 @@ import {
   MessageSquare,
   ArrowRight,
   Loader2,
+  IndianRupee,
 } from "lucide-react";
 import { useGuestId } from "@/hooks/useGuestId";
+import BudgetEstimatorWidget from "@/components/planner/BudgetEstimatorWidget";
 
 // ── Rotating welcome prompts ──────────────────────────────────────────────────
 
@@ -56,9 +58,9 @@ const CHIPS: { icon: React.ReactNode; label: string; value: string }[] = [
     value: "Hill station",
   },
   {
-    icon: <Globe size={12} />,
-    label: "International",
-    value: "International trip",
+    icon: <IndianRupee size={12} />,
+    label: "Estimate budget",
+    value: "__OPEN_BUDGET_WIDGET__",
   },
   { icon: <Users size={12} />, label: "Family tour", value: "Family tour" },
 ];
@@ -187,6 +189,14 @@ function isComplexPrompt(text: string): boolean {
   return wordCount >= 15 || complexKeywords.test(text);
 }
 
+// ── Detect budget-related language for auto-trigger ───────────────────────────
+
+function isBudgetQuery(text: string): boolean {
+  return /budget|how much|price range|afford|under ₹|cost of|estimate.*(cost|price|budget)|what.*budget/i.test(
+    text,
+  );
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Message {
@@ -194,6 +204,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   navButtons?: NavBtn[];
+  widget?: "budgetEstimator";
 }
 
 // ── NavButton component ───────────────────────────────────────────────────────
@@ -287,7 +298,9 @@ export default function TravelGuideButton() {
   const hidden =
     (pathname?.startsWith("/packages/") && pathname !== "/packages") ||
     pathname === "/planner" ||
-    pathname?.startsWith("/planner/"); // Auto-open once per session
+    pathname?.startsWith("/planner/");
+
+  // Auto-open once per session
   useEffect(() => {
     const alreadyOpened = sessionStorage.getItem("tg_auto_opened") === "true";
     if (alreadyOpened) return;
@@ -357,9 +370,38 @@ export default function TravelGuideButton() {
     setOpen(false);
   }
 
+  // ── Open the Budget Estimator widget inline in chat ─────────────────────────
+  function openBudgetWidget() {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "Sure! Let's find trips that fit your budget:",
+        widget: "budgetEstimator",
+      },
+    ]);
+  }
+
+  // ── Navigate to packages page filtered by matched package ids ───────────────
+  function handleViewAllMatches(ids: string[]) {
+    if (ids.length === 0) {
+      router.push("/packages");
+      return;
+    }
+    router.push(`/packages?ids=${ids.join(",")}`);
+  }
+
   async function handleSend() {
     const trimmed = input.trim();
     if (!trimmed || loading) return;
+
+    // ── Manual trigger chip for budget widget ──────────────────────────────────
+    if (trimmed === "__OPEN_BUDGET_WIDGET__") {
+      setInput("");
+      openBudgetWidget();
+      return;
+    }
 
     // ── Redirect complex prompts to the planner page ──────────────────────────
     if (isComplexPrompt(trimmed)) {
@@ -392,9 +434,16 @@ export default function TravelGuideButton() {
       { id: crypto.randomUUID(), role: "user", content: trimmed },
     ]);
     setInput("");
+
+    // ── Auto-trigger budget widget on budget-related language ──────────────────
+    if (isBudgetQuery(trimmed)) {
+      setTimeout(() => openBudgetWidget(), 300);
+      return;
+    }
+
     setLoading(true);
 
-    // Build history — exclude greeting messages, keep last 6 turns
+    // Build history exclude greeting messages, keep last 6 turns
     const history = messages
       .filter((m) => !m.id.startsWith("greet-"))
       .slice(-6)
@@ -413,14 +462,12 @@ export default function TravelGuideButton() {
 
       if (!res.ok) throw new Error("API error");
 
-      // Add empty assistant message to stream into
       const assistantId = crypto.randomUUID();
       setMessages((prev) => [
         ...prev,
         { id: assistantId, role: "assistant", content: "" },
       ]);
 
-      // Stream response
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let fullText = "";
@@ -449,7 +496,6 @@ export default function TravelGuideButton() {
         }
       }
 
-      // Strip [PACKAGE:id] tag + append nav buttons
       const clean = fullText.replace(/\[PACKAGE:[^\]]+\]/g, "").trim();
       const navButtons = getNavButtons(trimmed);
 
@@ -631,7 +677,7 @@ export default function TravelGuideButton() {
                 )}
                 <div
                   style={{
-                    maxWidth: "82%",
+                    maxWidth: msg.widget ? "94%" : "82%",
                     display: "flex",
                     flexDirection: "column",
                     gap: "6px",
@@ -663,7 +709,6 @@ export default function TravelGuideButton() {
                       }}
                     >
                       {msg.content}
-                      {/* Blinking cursor while streaming */}
                       {loading &&
                         msg.role === "assistant" &&
                         msg === messages[messages.length - 1] &&
@@ -682,6 +727,12 @@ export default function TravelGuideButton() {
                         )}
                     </p>
                   </div>
+
+                  {/* Budget Estimator widget */}
+                  {msg.widget === "budgetEstimator" && (
+                    <BudgetEstimatorWidget onViewAll={handleViewAllMatches} />
+                  )}
+
                   {msg.navButtons && msg.navButtons.length > 0 && (
                     <div
                       style={{
@@ -699,7 +750,7 @@ export default function TravelGuideButton() {
               </div>
             ))}
 
-            {/* Typing indicator — shown before first streaming chunk arrives */}
+            {/* Typing indicator */}
             {loading && messages[messages.length - 1]?.role === "user" && (
               <div style={{ display: "flex", justifyContent: "flex-start" }}>
                 <div
@@ -762,6 +813,10 @@ export default function TravelGuideButton() {
                 <button
                   key={chip.label}
                   onClick={() => {
+                    if (chip.value === "__OPEN_BUDGET_WIDGET__") {
+                      openBudgetWidget();
+                      return;
+                    }
                     setInput(chip.value);
                     setTimeout(() => inputRef.current?.focus(), 50);
                   }}

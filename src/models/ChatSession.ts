@@ -14,7 +14,7 @@ export interface IContext {
   travelStyle?: string; // e.g. "family", "adventure", "luxury"
   interestedPackages?: string[]; // package IDs the user showed interest in
   travelDates?: {
-    start?: string; // ISO string
+    start?: string;
     end?: string;
   };
   preferredDestinations?: string[];
@@ -84,7 +84,7 @@ ChatSessionSchema.index(
   },
 );
 
-// ── Model (singleton-safe for Next.js hot reload) ─────────────────────────────
+//Model (singleton-safe for Next.js hot reload) ─────────────────────────────
 
 export const ChatSessionModel: Model<IChatSession> =
   mongoose.models.ChatSession ??

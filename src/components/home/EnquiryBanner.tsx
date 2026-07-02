@@ -48,7 +48,7 @@ export default function EnquiryBanner() {
               href="/enquiry"
               className="bg-[#C8392B] hover:bg-[#c34119] text-white text-[11px] font-bold tracking-[0.15em] uppercase px-7 py-3.5 transition-colors"
             >
-              Tell Us
+              Enquire
             </Link>
           </div>
         </div>
