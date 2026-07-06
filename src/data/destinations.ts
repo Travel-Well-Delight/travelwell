@@ -73,7 +73,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1561361058-c24cecae35ca?w=800&q=80",
     packageCount: 1,
-    featured: false,
+    featured: true,
   },
   {
     id: "dest-007",
@@ -97,7 +97,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&q=80",
     packageCount: 1,
-    featured: false,
+    featured: true,
   },
   {
     id: "dest-009",
@@ -121,7 +121,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=800&q=80",
     packageCount: 1,
-    featured: false,
+    featured: true,
   },
   {
     id: "dest-011",
@@ -133,7 +133,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1561731216-c3a4d99437d5?w=800&q=80",
     packageCount: 1,
-    featured: false,
+    featured: true,
   },
   {
     id: "dest-012",
@@ -145,7 +145,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1585135497273-1a86b09fe70e?w=800&q=80",
     packageCount: 1,
-    featured: false,
+    featured: true,
   },
   {
     id: "dest-013",
@@ -157,7 +157,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=800&q=80",
     packageCount: 1,
-    featured: false,
+    featured: true,
   },
   // ── INTERNATIONAL ───────────────────────────────────────────
   {
@@ -242,7 +242,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&q=80",
     packageCount: 1,
-    featured: false,
+    featured: true,
   },
   {
     id: "dest-021",
@@ -251,10 +251,9 @@ export const destinations: Destination[] = [
     country: "Sri Lanka",
     region: "South Asia",
     tagline: "The Pearl of the Indian Ocean",
-    image:
-      "https://images.unsplash.com/photo-1546708482-7b4c75c90c39?w=800&q=80",
+    image: "/Sri-lanka main.jpg",
     packageCount: 1,
-    featured: false,
+    featured: true,
   },
   {
     id: "dest-022",
@@ -266,7 +265,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=800&q=80",
     packageCount: 1,
-    featured: false,
+    featured: true,
   },
   {
     id: "dest-023",
@@ -278,7 +277,7 @@ export const destinations: Destination[] = [
     image:
       "https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?w=800&q=80",
     packageCount: 1,
-    featured: false,
+    featured: true,
   },
 ];
 
