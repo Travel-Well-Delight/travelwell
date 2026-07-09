@@ -62,7 +62,7 @@ export default function EnquiryBanner() {
               href={WA_LINK}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2.5 border border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white text-[11px] font-bold tracking-[0.15em] uppercase px-7 py-3.5 transition-colors group"
+              className="flex items-center gap-2.5 border bg-[#25D366] text-white hover:bg-[#128C7E] hover:text-white text-[11px] font-bold tracking-[0.15em] uppercase px-7 py-3.5 transition-colors group"
             >
               {/* WhatsApp SVG icon */}
               <svg

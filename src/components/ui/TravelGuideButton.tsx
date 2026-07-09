@@ -730,7 +730,7 @@ export default function TravelGuideButton() {
 
                   {/* Budget Estimator widget */}
                   {msg.widget === "budgetEstimator" && (
-                    <BudgetEstimatorWidget onViewAll={handleViewAllMatches} />
+                    <BudgetEstimatorWidget {...({ onViewAll: handleViewAllMatches } as any)} />
                   )}
 
                   {msg.navButtons && msg.navButtons.length > 0 && (

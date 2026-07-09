@@ -40,9 +40,9 @@ const COLUMNS = [
   {
     title: "Legal",
     links: [
-      ["Privacy Policy", "/privacy"],
+      ["Privacy Policy", "/terms"],
       ["Terms", "/terms"],
-      ["Refunds", "/refunds"],
+      ["Refunds", "/terms"],
     ],
   },
 ];
